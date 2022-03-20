@@ -1,9 +1,10 @@
 import requests
 import mysql.connector
-from decimal import Decimal
+import json
 import datetime
 from datetime import timedelta
 from mysql.connector import Error
+from decimal import Decimal
 from requests.structures import CaseInsensitiveDict
 
 Token = 'e4460425fb33c497219a74b6a4318d38'
@@ -68,12 +69,12 @@ def execute_query(connection, query, tip='не определено'):
          
 # Создание клиента
 def create_customer(connection, nick_name):
-    create_query = "INSERT INTO customers VALUES ('"+nick_name+"',0,0);"
+    create_query = "INSERT INTO customers VALUES ('"+nick_name+"',NULL,NULL);"
     return execute_query(connection,create_query,'Создание клиента '+nick_name)
     
     
 # Создание заказа
-def create_order(connection, api_access_token, amount, comment, nick_name):
+def Create_order(connection, api_secret_token, amount, comment, nick_name):
     amount_str = str(Decimal(amount))
     datetime_str = str(datetime.datetime.now().isoformat())
     # SQL ---
@@ -87,7 +88,7 @@ def create_order(connection, api_access_token, amount, comment, nick_name):
         headers_API = CaseInsensitiveDict()
         headers_API["content-type"] = "application/json"
         headers_API["accept"] = "application/json"
-        headers_API["Authorization"] = "Bearer " + api_access_token
+        headers_API["Authorization"] = "Bearer " + api_secret_token
         # Данные
         json_API = '''
         {
@@ -114,15 +115,31 @@ def create_order(connection, api_access_token, amount, comment, nick_name):
             return respons.json()
         return respons
     return False
-    # create_query = "INSERT INTO orders VALUES ('"+nick_name+"',0,0);"      '''+str(end_datetime.isoformat())+'''
-    # return execute_query(connection,create_query,'Создание клиента '+nick_name)
 
+# Обновление статуса заказа
+def Check_Oreder(connection, api_secret_token, ID):
+    # API ---
+    url = "https://api.qiwi.com/partner/bill/v1/bills/"+str(ID)
+    headers_API = CaseInsensitiveDict()
+    headers_API["content-type"] = "application/json"
+    headers_API["accept"] = "application/json"
+    headers_API["Authorization"] = "Bearer " + api_secret_token
+    respons = requests.get(url, headers=headers_API)
+    if respons.ok:
+        respons_Json = respons.json()
+        status = str(respons_Json['status']['value'])
+        # SQL ---
+        query = "UPDATE orders SET Status = '"+status+"' WHERE No = '"+str(ID)+"';"
+        print(query)
+        execute_query(connection,query,'Обновление pаказа '+status+'|'+'ID')
+        
+    
 # Запрос данных клиента
 
 # Запрос статуса заказа
 # print(payment_history_last(Login,Token,10))
-Connection = create_SQL_connection(SQLHostName,SQLUserName,SQLRassword,SQLBaseName);
-
+Connection = create_SQL_connection(SQLHostName,SQLUserName,SQLRassword,SQLBaseName)
+Check_Oreder(Connection,SecretKye,9)
 # create_customer(Connection,'TEST01')
 
-print(create_order(Connection,SecretKye,1,'Test paid','Ander_kot'))
+# print(create_order(Connection,SecretKye,1,'Test paid','Ander_kot'))
