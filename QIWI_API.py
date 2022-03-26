@@ -9,7 +9,7 @@ from requests.structures import CaseInsensitiveDict
 
 Token = 'e4460425fb33c497219a74b6a4318d38'
 Login = '79885028775'
-SecretKey = 'eyJ2ZXJzaW9uIjoiUDJQIiwiZGF0YSI6eyJwYXlpbl9tZXJjaGFudF9zaXRlX3VpZCI6IjY2MnI2eC0wMCIsInVzZXJfaWQiOiI3OTg4NTAyODc3NSIsInNlY3JldCI6ImJiMTBlMDk3NzYyNjhiMTRmOGMzYzFhYzZlMzQ4MzkwNTUyNjY0Mjk3YTZiNjU0MWU5YmVhODQ4M2ZkZjliMzEifX0='
+SecretKey = 'eyJ2ZXJzaW9uIjoiUDJQIiwiZGF0YSI6eyJwYXlpbl9tZXJjaGFudF9zaXRlX3VpZCI6IjY2MnI2eC0wMCIsInVzZXJfaWQiOiI3OTg4NTAyODc3NSIsInNlY3JldCI6ImU4MDNlNGYyZmQ5ZmJjMzJhNTQxYjY5YjVlNjg2YTM0NTllMjc5YzM3MjVkNzA3MzE2NTc0NTczZjIzZThhMTIifX0='
 
 SQLHostName = '192.168.1.101'
 SQLUserName = 'Ander_kot'
@@ -128,6 +128,7 @@ def Get_Commission(connection):
 # Создание заказа
 def Create_order(connection, api_secret_token, amount, comment, nick_name):
     datetime_str = str(datetime.datetime.now().isoformat())
+    print(api_secret_token)
     # Запрос коммиссии
     respons_SQL = Get_Commission(connection)
     if respons_SQL['successfully'] and respons_SQL['data']:
@@ -135,9 +136,8 @@ def Create_order(connection, api_secret_token, amount, comment, nick_name):
         amount_decimal = Decimal(amount)
         commission_decimal = Decimal(commission)/Decimal(100)+Decimal(1)
         amount_str = str(round(amount_decimal*commission_decimal,2))
-        print(str(amount_str))
         # Создание заказа в QSL
-        query = "INSERT INTO orders(NickName,RU,CreateDateTime,Status) VALUES ('"+nick_name+"',"+amount_str+",'"+datetime_str+"','Create');"
+        query = "INSERT INTO orders(NickName,RU,CreateDateTime) VALUES ('"+nick_name+"',"+amount_str+",'"+datetime_str+"');"
         respons_SQL = execute_query(connection,query,'Создание pаказа для '+nick_name)
         if respons_SQL['successfully']:
             query = "SELECT MAX(No) FROM orders;"
@@ -153,36 +153,29 @@ def Create_order(connection, api_secret_token, amount, comment, nick_name):
                 headers_API["accept"] = "application/json"
                 headers_API["Authorization"] = "Bearer " + api_secret_token
                 # Данные
-                json_API = '''
-                {
-                   "amount": {
-                     "currency": "RUB",
-                     "value": "'''+amount_str+'''"
-                   },
-                   "comment": "'''+comment+''': '''+str(nick_name)+'''",
-                   "expirationDateTime": "'''+str(end_datetime.isoformat())+'''T12:00:00+03:00",
-                    "customer": {
-                        "phone": null,
-                        "email": null,
-                        "account": "'''+str(nick_name)+'''"
-                   }, 
-                   "customFields" : {
-                        "paySourcesFilter":"card"
-                        "themeCode": null,
-                        "yourParam1": null,
-                        "yourParam2": null
-                    }
-                }'''
-                respons = requests.put(url, headers=headers_API, data=json_API)
+                post_json = {"amount": {"currency": "RUB","value": ""},"comment": "","expirationDateTime": "","customer": {"phone": "","email": "","account": ""},"customFields" : {"paySourcesFilter":"","themeCode": "","yourParam1": "","yourParam2": ""}}
+                post_json["amount"]["value"] = amount_str
+                post_json["comment"] = comment+': '+str(nick_name)
+                post_json["expirationDateTime"] = str(end_datetime.isoformat())+'T12:00:00+03:00'
+                post_json["customer"]["account"] = str(nick_name)
+                respons = requests.put(url, headers=headers_API, json=post_json)
                 if respons.ok:
-                    respons_Json = respons.json()
-                    url = str(respons_Json['payUrl'])
-                    respons_SQL = Add_URL(connection,url,order_ID)
-                    if respons_SQL['successfully']:
-                        return {'successfully':True, 'data':url}
+                    respons_SQL = Check_Oreder(connection, api_secret_token,order_ID)
+                    if respons_SQL['successfully'] and respons_SQL['data'] == 'WAITING': 
+                        respons_Json = respons.json()
+                        url = str(respons_Json['payUrl'])
+                        print(url)
+                        respons_SQL = Add_URL(connection,url,order_ID)
+                        if respons_SQL['successfully']:
+                            return {'successfully':True, 'data':url}
+                        else:
+                            return {'successfully':False, 'data':''}
                     else:
                         return {'successfully':False, 'data':''}
-                return {'successfully':False, 'data':''}
+                else:
+                    return {'successfully':False, 'data':''}
+            else:
+                return {'successfully':False, 'data':''}   
         else:
             return {'successfully':False, 'data':''}
     else:
@@ -202,10 +195,11 @@ def Check_Oreder(connection, api_secret_token, order_ID):
         status = str(respons_Json['status']['value'])
         # SQL ---
         query = "UPDATE orders SET Status = '"+status+"' WHERE No = '"+str(order_ID)+"';"
-        print(query)
         if execute_query(connection,query,'Обновление pаказа '+status+'|'+'ID'):
-            return True
-    return False
+            return {'successfully':True, 'data':status}
+        else:
+            {'successfully':False, 'data':''}
+    return {'successfully':False, 'data':''}
 
 # Установка баланса по умолчанию
 def Set_default_wallet(connection, login, api_access_token, wallet):
@@ -227,7 +221,8 @@ def Set_default_wallet(connection, login, api_access_token, wallet):
 
 # Добавить Url к заказу
 def Add_URL(connection,order_URL,order_ID):
-    query = "UPDATE orders SET Url = '"+order_URL+"' WHERE No = "+order_ID+";"
+    order_ID_str = str(order_ID)
+    query = "UPDATE orders SET Url = '"+order_URL+"' WHERE No = "+order_ID_str+";"
     respons_SQL = execute_query(connection,query,'Установка URL заказу '+str(order_ID)+': '+str(order_URL))
     if respons_SQL['successfully']:
         return {'successfully':True, 'data':''}
@@ -252,14 +247,14 @@ def Send_To_Steam(api_access_token):
     print(str(respons.text))
     
 # print(payment_history_last(Login,Token,10))
-# Connection = Create_SQL_connection(SQLHostName,SQLUserName,SQLRassword,SQLBaseName)
+Connection = Create_SQL_connection(SQLHostName,SQLUserName,SQLRassword,SQLBaseName)
 # print(get_balance(Login,Token))
-# Check_Oreder(Connection,SecretKye,9)
+# Check_Oreder(Connection,SecretKey,9)
 # create_customer(Connection,'TEST01')
 # Set_default_wallet(Connection,Login,Token,'qw_wallet_kzt')
 # get_balance(Connection,Login,Token)
 #  print(str(Get_Cross_Rates(Token)))
 # Convert(Token)
-# print(str(Create_order(Connection,SecretKye,1,'Test','Ander_kot')))
+# print(str(Create_order(Connection,SecretKey,11,'Test','lj')))
 # Send_To_Steam(Token)
 # print(create_order(Connection,SecretKye,1,'Test paid','Ander_kot'))

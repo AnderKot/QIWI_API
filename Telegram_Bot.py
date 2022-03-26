@@ -58,7 +58,7 @@ def createpayment(message):
         respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
         if respons_SQL['successfully'] and respons_SQL['data']:
             nick_name = respons_SQL['data'][0][0]
-            respons_SQL = QIWI_API.Create_order(Connection, QIWI_API.SecretKey,message.text,'Account replenishment: ',nick_name)
+            respons_SQL = QIWI_API.Create_order(Connection, QIWI_API.SecretKey,message.text,'Account replenishment',nick_name)
             if respons_SQL['successfully'] and respons_SQL['data']:
                 order_URL = respons_SQL['data']
                 Bot.send_message(message.chat.id, 'Ваша ссылка для оплаты:\n'+order_URL)
@@ -66,10 +66,11 @@ def createpayment(message):
                 Bot.register_next_step_handler(message,main)
             else:
                 print('У клиента ошибка ! '+str(message.chat.id)+'\nСсылка на заказ не создана')
+                Bot.send_message(message.chat.id, 'Ошибка!\nСсылка не создана\nПовторите попытку или свяжитесь с подержкой!',reply_markup= Main_menu_markup)
                 Bot.register_next_step_handler(message,main)
         else:
             print('У клиента ошибка ! '+str(message.chat.id)+'\nНе найден ник при создании заказа')
-            Bot.send_message(message.chat.id, 'Ошибка!\nВаш ник не найден\nПовторите попытку или свяжитесь с подержкой!')
+            Bot.send_message(message.chat.id, 'Ошибка!\nВаш ник не найден\nПовторите попытку или свяжитесь с подержкой!',reply_markup= Main_menu_markup)
             Bot.register_next_step_handler(message,main)
     else:
         Bot.send_message(message.chat.id, 'Используйте только цифры !')
