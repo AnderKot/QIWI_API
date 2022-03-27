@@ -17,7 +17,7 @@ Main_menu_markup.add(types.KeyboardButton("Подтвердить статус �
 Main_menu_markup.add(types.KeyboardButton("Менеджер акаунтов"))
 
 Nick_Name_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
-Nick_Name_menu_markup.add(types.KeyboardButton("Отвязать акаунт Steam"))
+Nick_Name_menu_markup.add(types.KeyboardButton("Добавить акаунт Steam"))
 Nick_Name_menu_markup.add(types.KeyboardButton("Сменить Steam акаунт"))
 Nick_Name_menu_markup.add(types.KeyboardButton("Назад"))
 
@@ -56,14 +56,19 @@ def start(message):
         Bot.send_message(message.chat.id, 'Бип ? Буп !\nБот перезагружен', reply_markup= Regestration_markup)
 
 def NickNameMenu(message):
-    if("Отвязать акаунт Steam" == message.text):
-        nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
-        nick_name = nisk_respons_SQL['data'][0][0]
-        print('m'+nick_name)
-        respons_SQL = QIWI_API.Off_Customer(Connection,message.chat.id,nick_name)
-        if respons_SQL['successfully']:
-            Bot.send_message(message.chat.id, 'Ваш ник отвязан\nВы можете зарегестрироваться под новым', reply_markup= Regestration_markup)
-            Bot.register_next_step_handler(message,start)
+    if("Добавить акаунт Steam" == message.text):
+        print("Запрос регестрации: "+str(message.chat.id))
+            Bot.send_message(message.chat.id, 'Пожалуйста введите свой логин в Steam\nОн расположен в окне Steam во вкладке с верху с права',reply_markup = Change_Nick_menu_markup)
+            login_tip_img = open('Logintip.png','rb')
+            Bot.send_photo(message.chat.id,login_tip_img)
+            Bot.register_next_step_handler(message,Add_Steam)
+        #nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
+        #nick_name = nisk_respons_SQL['data'][0][0]
+        #print('m'+nick_name)
+        #respons_SQL = QIWI_API.Off_Customer(Connection,message.chat.id,nick_name)
+        #if respons_SQL['successfully']:
+        #    Bot.send_message(message.chat.id, 'Ваш ник отвязан\nВы можете зарегестрироваться под новым', reply_markup= Regestration_markup)
+        #    Bot.register_next_step_handler(message,start)
 
     if("Сменить Steam акаунт" == message.text):
         respons_SQL = QIWI_API.Get_NickNames(Connection,message.chat.id)
@@ -187,6 +192,19 @@ def registration(message):
         Bot.send_message(message.chat.id, 'Ошибка при регестрации, повторите попытку или свяжитесь с подержкой!')
         Bot.register_next_step_handler(message,start)
 
+def Add_Steam(message):
+    if("Назад" == message.text):
+        Bot.send_message(message.chat.id, 'Выберите действие',reply_markup= Nick_Name_menu_markup)
+        Bot.register_next_step_handler(message,NickNameMenu)
+    else:
+        respons_SQL = QIWI_API.Create_customer(Connection,message.chat.id,message.text)
+        if respons_SQL['successfully']:
+            QIWI_API.Set_default_Nick(Connection,message.text,message.chat.id)
+            Bot.send_message(message.chat.id, 'На ваш акаунт зарегестрирован ник: '+message.text+'Он выбран основным',reply_markup = Main_menu_markup)
+            Bot.register_next_step_handler(message,main)
+        else:
+            Bot.send_message(message.chat.id, 'Ошибка при регестрации, повторите попытку или свяжитесь с подержкой!')
+            Bot.register_next_step_handler(message,start)
 
             
 # Получение сообщений от юзера
