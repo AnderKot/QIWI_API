@@ -18,10 +18,14 @@ Main_menu_markup.add(types.KeyboardButton("Менеджер акаунтов"))
 
 Nick_Name_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
 Nick_Name_menu_markup.add(types.KeyboardButton("Отвязать акаунт Steam"))
+Nick_Name_menu_markup.add(types.KeyboardButton("Сменить Steam акаунт"))
 Nick_Name_menu_markup.add(types.KeyboardButton("Назад"))
 
 Order_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
 Order_menu_markup.add(types.KeyboardButton("Назад"))
+
+Change_Nick_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
+Change_Nick_menu_markup.add(types.KeyboardButton("Назад"))
 
 # Функция, обрабатывающая команду /start
 @Bot.message_handler(commands=["start"])
@@ -49,7 +53,7 @@ def start(message):
             Bot.register_next_step_handler(message,registration)
             
     else:
-        Bot.send_message(message.chat.id, 'Бип ? Буп !', reply_markup= Regestration_markup)
+        Bot.send_message(message.chat.id, 'Бип ? Буп !\nБот перезагружен', reply_markup= Regestration_markup)
 
 def NickNameMenu(message):
     if("Отвязать акаунт Steam" == message.text):
@@ -60,8 +64,6 @@ def NickNameMenu(message):
         if respons_SQL['successfully']:
             Bot.send_message(message.chat.id, 'Ваш ник отвязан\nВы можете зарегестрироваться под новым', reply_markup= Regestration_markup)
             Bot.register_next_step_handler(message,start)
-<<<<<<< Updated upstream
-=======
 
     if("Сменить Steam акаунт" == message.text):
         respons_SQL = QIWI_API.Get_NickNames(Connection,message.chat.id)
@@ -79,14 +81,11 @@ def NickNameMenu(message):
             Bot.send_message(message.chat.id, 'Введите Steam акаунт на который хотите переключиться',reply_markup = Change_Nick_menu_markup)
             Bot.register_next_step_handler(message, ChangeNickName)
 
->>>>>>> Stashed changes
         
     if("Назад" == message.text):
         Bot.send_message(message.chat.id, 'Выберите действие',reply_markup= Main_menu_markup)
         Bot.register_next_step_handler(message,main)
 
-<<<<<<< Updated upstream
-=======
 def ChangeNickName(message):
     nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
     nick_name = nisk_respons_SQL['data'][0][0]
@@ -111,7 +110,6 @@ def ChangeNickName(message):
 
 
 
->>>>>>> Stashed changes
 def main(message):
     nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
     if nisk_respons_SQL['successfully'] and nisk_respons_SQL['data']:
