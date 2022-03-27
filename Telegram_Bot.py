@@ -130,7 +130,7 @@ def main(message):
                 Bot.send_message(message.chat.id, 'Подтверждено\n'+respons_QIWI['data']['PAID']+' пополненией\n'+respons_QIWI['data']['COMPLETED']+' заказов отправлено на Steam',reply_markup= Main_menu_markup)
                 Bot.register_next_step_handler(message,main)
             else:
-                Bot.send_message(message.chat.id, 'Оплат по ссылкам не найдено !',reply_markup= Main_menu_markup)
+                Bot.send_message(message.chat.id, 'Оплат по ссылкам не найдено !/nЕсли вы производили оплату свяжитесь с подержкой!/nhttps://discordapp.com/users/Ander_kot#5764/',reply_markup= Main_menu_markup)
                 Bot.register_next_step_handler(message,main)
             
         if "Менеджер акаунтов" == message.text:
