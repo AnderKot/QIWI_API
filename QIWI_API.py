@@ -230,7 +230,7 @@ def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_I
             amount_KZT_str = str(round(amount_KZT,2))
             respons_API = Convert(api_access_token,order_ID_str,amount_KZT_str)
             if respons_API['successfully']:
-                Set_crossed(connection,order_ID,nickName,amount_KZT_str,tg_ID)
+                Set_crossed(connection,order_ID_str,nickName,amount_KZT_str,tg_ID)
     # Обновление статусов заказов ожидающих исполнение
     query = "SELECT No,KZ FROM orders WHERE NickName = '"+nickName+"' AND Status = 'CROSSED';"
     respons_SQL = execute_query(connection,query,'Отбор заказов на исполнение '+nickName)
@@ -240,7 +240,7 @@ def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_I
             order_ID = rows[0]
             amount_KZT = round(Decimal(rows[1]),2)
             amount_KZT_str = str(amount_KZT)
-            Send_To_Steam(api_access_token,nickName,amount_KZT,order_ID)
+            respons_API = Send_To_Steam(api_access_token,nickName,amount_KZT,order_ID)
             if respons_API['successfully']:
                 Set_comleted(connection,order_ID,nickName,amount_KZT_str,tg_ID)
                 coutn_orders += 1
@@ -306,19 +306,18 @@ def Send_To_Steam(api_access_token,nickName,amount_KZT,order_ID):
     json_API['id'] = str(order_ID)
     json_API['sum']['amount'] = amount_KZT_str
     json_API['fields']['account'] = nickName
-    print(str(json_API))
     respons = requests.post(url, headers=headers_API, json=json_API)
 
     if respons.ok:
         return {'successfully':True, 'data':''}
     else:
-        return {'successfully':False, 'data':''}
+        return {'successfully':False, 'data':respons.text}
     
 # print(payment_history_last(Login,Token,10))
-Connection = Create_SQL_connection(SQLHostName,SQLUserName,SQLRassword,SQLBaseName)
+# Connection = Create_SQL_connection(SQLHostName,SQLUserName,SQLRassword,SQLBaseName)
 
 #Set_comleted(Connection,'29','ander_kot','613.54','777411561')
-Find_paid_order(Connection,Token,SecretKey,'lj','777411561')
+# Find_paid_order(Connection,Token,SecretKey,'Логинмой','187401430')
 # print(get_balance(Login,Token))
 # Check_Oreder(Connection,SecretKey,9)
 # create_customer(Connection,'TEST01')
@@ -329,3 +328,7 @@ Find_paid_order(Connection,Token,SecretKey,'lj','777411561')
 # print(str(Create_order(Connection,SecretKey,11,'Test','lj')))
 # Send_To_Steam(Token,'Ander_kot', 613.54,'40')
 # print(create_order(Connection,SecretKye,1,'Test paid','Ander_kot'))
+# respons_API = Send_To_Steam(Token,'Логинмой','256.79','32')
+# print(respons_API['data'])
+# query = "UPDATE orders SET Status = 'CROSSED' WHERE No = 32;"
+# respons_SQL = execute_query(Connection,query,'Запись на счет Тенге')
