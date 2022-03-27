@@ -269,6 +269,19 @@ def Set_default_wallet(connection, login, api_access_token, wallet):
                 return {'successfully':True, 'data':''}
     return {'successfully':False, 'data':''}
 
+<<<<<<< Updated upstream
+=======
+# Установка Steam акаунта по умолчанию
+def Set_default_Nick(connection,nickName,tg_ID ):
+    tg_ID_str = str(tg_ID)
+    query = "UPDATE customers SET Logined = 0 WHERE TgID = '"+tg_ID_str+"';"
+    if execute_query(connection,query,'Выключение Steam акаунтов '+tg_ID_str):
+        query = "UPDATE customers SET Logined = 1 WHERE TgID = '"+tg_ID_str+"' AND NickName = '"+nickName+"';"
+        if execute_query(connection,query,'Включение Steam акаунта '+nickName+' клиенту ' +tg_ID_str):
+            return {'successfully':True, 'data':''}
+    return {'successfully':False, 'data':''}
+
+>>>>>>> Stashed changes
 # Добавить Url к заказу
 def Add_URL(connection,order_URL,order_ID):
     order_ID_str = str(order_ID)

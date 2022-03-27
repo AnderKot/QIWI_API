@@ -53,23 +53,70 @@ def start(message):
 
 def NickNameMenu(message):
     if("Отвязать акаунт Steam" == message.text):
-        respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
-        nick_name = respons_SQL['data'][0][0]
+        nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
+        nick_name = nisk_respons_SQL['data'][0][0]
+        print('m'+nick_name)
         respons_SQL = QIWI_API.Off_Customer(Connection,message.chat.id,nick_name)
         if respons_SQL['successfully']:
             Bot.send_message(message.chat.id, 'Ваш ник отвязан\nВы можете зарегестрироваться под новым', reply_markup= Regestration_markup)
             Bot.register_next_step_handler(message,start)
+<<<<<<< Updated upstream
+=======
+
+    if("Сменить Steam акаунт" == message.text):
+        respons_SQL = QIWI_API.Get_NickNames(Connection,message.chat.id)
+        if respons_SQL['successfully']:
+            Bot.send_message(message.chat.id, 'Список акаунтов Steam')
+            coutn_rows = 1
+            for rows in respons_SQL['data']:
+                nick_name = rows[0]
+                if rows[1] == '1':
+                    logined = 'Текущий'
+                else:
+                    logined = ''
+                Bot.send_message(message.chat.id, str(coutn_rows)+'. '+nick_name+' '+logined)
+                coutn_rows += 1
+            Bot.send_message(message.chat.id, 'Введите Steam акаунт на который хотите переключиться',reply_markup = Change_Nick_menu_markup)
+            Bot.register_next_step_handler(message, ChangeNickName)
+
+>>>>>>> Stashed changes
         
     if("Назад" == message.text):
         Bot.send_message(message.chat.id, 'Выберите действие',reply_markup= Main_menu_markup)
         Bot.register_next_step_handler(message,main)
 
+<<<<<<< Updated upstream
+=======
+def ChangeNickName(message):
+    nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
+    nick_name = nisk_respons_SQL['data'][0][0]
+    print('C'+nick_name)
+    if("Назад" == message.text):
+        Bot.send_message(message.chat.id, 'Ваш текущий ник: '+nick_name,reply_markup= Nick_Name_menu_markup)
+        Bot.register_next_step_handler(message,NickNameMenu)
+    else:
+        finded = False;
+        respons_SQL = QIWI_API.Get_NickNames(Connection,message.chat.id)
+        for rows in respons_SQL['data']:
+                nick_name = rows[0]
+                if nick_name == message.text:
+                    finded = True
+                    respons_SQL = QIWI_API.Set_default_Nick(Connection,nick_name,message.chat.id)
+                    if respons_SQL['successfully']:
+                       Bot.send_message(message.chat.id, 'Выпереключены на Steam '+nick_name,reply_markup= Nick_Name_menu_markup) 
+                       Bot.register_next_step_handler(message, NickNameMenu)
+        if not finded:
+            Bot.send_message(message.chat.id, 'Такой Steam не найден '+message.text,reply_markup= Change_Nick_menu_markup) 
+            Bot.register_next_step_handler(message, ChangeNickName)
+
+
+
+>>>>>>> Stashed changes
 def main(message):
     nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
-    print(str(nisk_respons_SQL['data']))
-    print(str(nisk_respons_SQL['successfully']))
     if nisk_respons_SQL['successfully'] and nisk_respons_SQL['data']:
         nick_name = nisk_respons_SQL['data'][0][0]
+        print(nick_name)
         if "Создать ссылку на пополнение Steam" == message.text:               
             Bot.send_message(message.chat.id, 'Введите сумму на котору пополнить акаунт\n'+nick_name+'\nМинимум 20р',reply_markup = Order_menu_markup)
             Bot.register_next_step_handler(message,createpayment)
