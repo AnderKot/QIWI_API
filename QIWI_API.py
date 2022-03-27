@@ -209,6 +209,16 @@ def Check_Oreder(connection, api_secret_token, order_ID):
             {'successfully':False, 'data':''}
     return {'successfully':False, 'data':''}
 
+# Список ников на акаунте
+def Get_NickNames(connection,tg_ID):
+    tg_ID_str = str(tg_ID)
+    query = "SELECT NickName,Logined FROM customers WHERE TgID = "+tg_ID_str+";"
+    respons_SQL = execute_query(connection,query,'список ников '+tg_ID_str)
+    if respons_SQL['successfully'] and respons_SQL['data']:
+        return {'successfully':True, 'data':respons_SQL['data']}
+    else:
+        return {'successfully':False, 'data':''}
+
 # Исполнение оплаченых заказов
 def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_ID):
     # Обновление статусов заказов ожидающих оплату
@@ -231,6 +241,7 @@ def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_I
             respons_API = Convert(api_access_token,order_ID_str,amount_KZT_str)
             if respons_API['successfully']:
                 Set_crossed(connection,order_ID_str,nickName,amount_KZT_str,tg_ID)
+
     # Обновление статусов заказов ожидающих исполнение
     query = "SELECT No,KZ FROM orders WHERE NickName = '"+nickName+"' AND Status = 'CROSSED';"
     respons_SQL = execute_query(connection,query,'Отбор заказов на исполнение '+nickName)
@@ -264,6 +275,16 @@ def Set_default_wallet(connection, login, api_access_token, wallet):
             query = "UPDATE wallet SET Is_default = 1 WHERE Name = '"+wallet+"';"
             if execute_query(connection,query,'Установка стандартного кошелька: '+wallet):
                 return {'successfully':True, 'data':''}
+    return {'successfully':False, 'data':''}
+
+# Установка Steam акаунта по умолчанию
+def Set_default_wallet(connection,nickName,tg_ID ):
+    tg_ID_str = str(tg_ID)
+    query = "UPDATE customer SET Logined = 0 WHERE TgID = '"+tg_ID_str+"';"
+    if execute_query(connection,query,'Выключение Steam акаунтов '+tg_ID_str):
+        query = "UPDATE customer SET Logined = 1 WHERE TgID = '"+tg_ID_str+"' AND NisKName = '"+nickName+"';"
+        if execute_query(connection,query,'Включение Steam акаунта '+nickName+' клиенту ' +tg_ID_str):
+            return {'successfully':True, 'data':''}
     return {'successfully':False, 'data':''}
 
 # Добавить Url к заказу

@@ -18,10 +18,14 @@ Main_menu_markup.add(types.KeyboardButton("Менеджер акаунтов"))
 
 Nick_Name_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
 Nick_Name_menu_markup.add(types.KeyboardButton("Отвязать акаунт Steam"))
+Nick_Name_menu_markup.add(types.KeyboardButton("Сменить Steam акаунт"))
 Nick_Name_menu_markup.add(types.KeyboardButton("Назад"))
 
 Order_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
 Order_menu_markup.add(types.KeyboardButton("Назад"))
+
+Change_Nick_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
+Change_Nick_menu_markup.add(types.KeyboardButton("Назад"))
 
 # Функция, обрабатывающая команду /start
 @Bot.message_handler(commands=["start"])
@@ -49,7 +53,7 @@ def start(message):
             Bot.register_next_step_handler(message,registration)
             
     else:
-        Bot.send_message(message.chat.id, 'Бип ? Буп !', reply_markup= Regestration_markup)
+        Bot.send_message(message.chat.id, 'Бип ? Буп !\nБот перезагружен', reply_markup= Regestration_markup)
 
 def NickNameMenu(message):
     if("Отвязать акаунт Steam" == message.text):
@@ -59,10 +63,48 @@ def NickNameMenu(message):
         if respons_SQL['successfully']:
             Bot.send_message(message.chat.id, 'Ваш ник отвязан\nВы можете зарегестрироваться под новым', reply_markup= Regestration_markup)
             Bot.register_next_step_handler(message,start)
+
+    if("Сменить Steam акаунт" == message.text):
+        respons_SQL = Get_NickNames(Connection,message.chat.id)
+        if respons_SQL['successfully']:
+            Bot.send_message(message.chat.id, 'Список акаунтов Steam')
+            coutn_rows = 1
+            for rows in respons_SQL['data']:
+                nick_name = rows[0]
+                if rows[1] == '1':
+                    logined = 'Текущий'
+                else:
+                    logined = ''
+                Bot.send_message(message.chat.id, str(coutn_rows)+'. '+nick_name+' '+logined)
+                coutn_rows += 1
+            Bot.send_message(message.chat.id, 'Введите Steam акаунт на который хотите переключиться',reply_markup = Change_Nick_menu_markup)
+            Bot.register_next_step_handler(message, ChangeNickName)
+
         
     if("Назад" == message.text):
         Bot.send_message(message.chat.id, 'Выберите действие',reply_markup= Main_menu_markup)
         Bot.register_next_step_handler(message,main)
+
+def ChangeNickName(message):
+    if("Назад" == message.text):
+        Bot.send_message(message.chat.id, 'Выберите действие',reply_markup= Nick_Name_menu_markup)
+        Bot.register_next_step_handler(message,NickNameMenu)
+    else:
+        respons_SQL = Get_NickNames(Connection,message.chat.id)
+        finded = False;
+        for rows in respons_SQL['data']:
+                nick_name = rows[0]
+                if nick_name == message.text:
+                    finded = True
+                    respons_SQL = Set_default_wallet(Connection,nick_name,message.chat.id)
+                    if respons_SQL['successfully']:
+                       Bot.send_message(message.chat.id, 'Выпереключены на Steam '+nick_name,reply_markup= Change_Nick_menu_markup) 
+                       Bot.register_next_step_handler(message, ChangeNickName)
+        if not finded:
+            Bot.send_message(message.chat.id, 'Такой Steam не найден'+nick_name,reply_markup= Change_Nick_menu_markup) 
+            Bot.register_next_step_handler(message, ChangeNickName)
+
+
 
 def main(message):
     nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
