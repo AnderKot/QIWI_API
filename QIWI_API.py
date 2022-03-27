@@ -54,7 +54,7 @@ def Get_Cross_Rates(api_access_token):
     return cross
 
 # Конвертация валют
-def Convert(api_access_token):
+def Convert(api_access_token,order_ID,amount):
     # API ---
     url = "https://edge.qiwi.com/sinap/api/v2/terms/1099/payments"
     # Заголовок
@@ -62,9 +62,9 @@ def Convert(api_access_token):
     headers_API["content-type"] = "application/json"
     headers_API["accept"] = "application/json"
     headers_API["Authorization"] = "Bearer " + api_access_token
-    post_json = {"id":"","sum":{"amount":"","currency":"398"},"paymentMethod":{"type":"Account","accountId":"643"}, "comment":"TEST","fields":{"account":"+79885028775"}}
-    post_json['id'] = str(3)
-    post_json['sum']['amount'] = 80
+    post_json = {"id":"","sum":{"amount":"","currency":"398"},"paymentMethod":{"type":"Account","accountId":"643"}, "Convert ty KZT":"TEST","fields":{"account":"+79885028775"}}
+    post_json['id'] = str(order_ID)
+    post_json['sum']['amount'] = str(amount)
     respons = requests.post(url, headers=headers_API, json=post_json)
     print(str(respons))
     print(str(respons.text))
@@ -111,10 +111,15 @@ def Create_customer(connection,Tg_ID, nick_name):
     return execute_query(connection,create_query,'Создание клиента '+nick_name)
     
 # Проверка акаунта
-def Check_Customer(connection,Tg_ID):
-    create_query = "SELECT NickName,RU,KZ FROM customers WHERE TgID = "+str(Tg_ID)+" AND Logined = 1;"
-    return execute_query(connection,create_query,'данные клиента '+str(Tg_ID))
+def Check_Customer(connection,tg_ID):
+    create_query = "SELECT NickName,RU,KZ FROM customers WHERE TgID = "+str(tg_ID)+" AND Logined = 1;"
+    return execute_query(connection,create_query,'данные клиента '+str(tg_ID))
 
+# Отключение акаунта
+def Off_Customer(connection,tg_ID,nick_Name):
+    create_query = "UPDATE customers SET Logined = 0  WHERE TgID = "+str(tg_ID)+" AND NickName = '"+nick_Name+"';"
+    return execute_query(connection,create_query,'Отказ от ника '+nick_Name+': '+str(tg_ID))
+    
 # Коммиссия
 def Get_Commission(connection):
     create_query = "SELECT commission FROM config;"
@@ -201,6 +206,31 @@ def Check_Oreder(connection, api_secret_token, order_ID):
             {'successfully':False, 'data':''}
     return {'successfully':False, 'data':''}
 
+# Поиск оплаченых заказов
+def Find_paid_order(connection, api_access_token, api_secret_token,nickName):
+    query = "SELECT No FROM orders WHERE NickName = '"+nickName+"' AND Status = 'WAITING';"
+    respons_SQL = execute_query(connection,query,'Отбор заказов на подтверждение '+nickName)
+    print(str(respons_SQL['data']))
+    if respons_SQL['successfully'] and respons_SQL['data']:
+        for rows in respons_SQL['data']:          
+            Check_Oreder(connection,api_secret_token,rows[0])
+            
+    query = "SELECT No,RU FROM orders WHERE NickName = '"+nickName+"' AND Status = 'PAID';"
+    respons_SQL = execute_query(connection,query,'Отбор заказов на пополнение '+nickName)
+    if respons_SQL['successfully'] and respons_SQL['data']:
+        for rows in respons_SQL['data']:
+            print(rows[0])
+            print(rows[1])
+            cross = Decemal(Get_Cross_Rates(api_access_token))
+            amount_RUB = Decemal(rows[1])
+            amount_KZT = amount_RUB/cross
+            amount_KZT_str = str(round(amount_KZT,2))
+            print(amount_KZT_str)
+            respons_SQL = Convert(api_access_token,rows[1])
+        return {'successfully':True, 'data':''}
+    else:
+        return {'successfully':False, 'data':''}
+        
 # Установка баланса по умолчанию
 def Set_default_wallet(connection, login, api_access_token, wallet):
     url = "https://edge.qiwi.com/funding-sources/v2/persons/"+login+"/accounts/"+wallet
@@ -228,6 +258,9 @@ def Add_URL(connection,order_URL,order_ID):
         return {'successfully':True, 'data':''}
     else:
         return {'successfully':False, 'data':''}
+
+# Добавить KZT на акаунт и заказ, перевести заказ в "CROSSED"
+# def 
     
 # Перевод на стим 31212
 def Send_To_Steam(api_access_token):
@@ -248,13 +281,14 @@ def Send_To_Steam(api_access_token):
     
 # print(payment_history_last(Login,Token,10))
 Connection = Create_SQL_connection(SQLHostName,SQLUserName,SQLRassword,SQLBaseName)
+# Find_paid_order(Connection,Token,SecretKey,'ander_kot')
 # print(get_balance(Login,Token))
 # Check_Oreder(Connection,SecretKey,9)
 # create_customer(Connection,'TEST01')
 # Set_default_wallet(Connection,Login,Token,'qw_wallet_kzt')
 # get_balance(Connection,Login,Token)
 #  print(str(Get_Cross_Rates(Token)))
-# Convert(Token)
+Convert(Token,80)
 # print(str(Create_order(Connection,SecretKey,11,'Test','lj')))
 # Send_To_Steam(Token)
 # print(create_order(Connection,SecretKye,1,'Test paid','Ander_kot'))

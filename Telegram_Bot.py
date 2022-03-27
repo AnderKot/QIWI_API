@@ -11,7 +11,13 @@ Regestration_markup.add(types.KeyboardButton("Регистрация"))
 Delete_markup = types.ReplyKeyboardRemove()
 
 Main_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
-Main_menu_markup.add(types.KeyboardButton("Пополнить Steam"))
+Main_menu_markup.add(types.KeyboardButton("Создать ссылку на пополнение Steam"))
+Main_menu_markup.add(types.KeyboardButton("Подтвердить статус оплаты"))
+Main_menu_markup.add(types.KeyboardButton("Менеджер акаунтов"))
+
+Nick_Name_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
+Nick_Name_menu_markup.add(types.KeyboardButton("Отвязать акаунт Steam"))
+Nick_Name_menu_markup.add(types.KeyboardButton("Назад"))
 
 # Функция, обрабатывающая команду /start
 @Bot.message_handler(commands=["start"])
@@ -37,20 +43,40 @@ def start(message):
             login_tip_img = open('Logintip.png','rb')
             Bot.send_photo(message.chat.id,login_tip_img)
             Bot.register_next_step_handler(message,registration)
+            
     else:
         Bot.send_message(message.chat.id, 'Бип ? Буп !', reply_markup= Regestration_markup)
 
-def main(message):
-    if "Пополнить Steam" == message.text:
+def NickNameMenu(message):
+    if("Отвязать акаунт Steam" == message.text):
         respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
-        if respons_SQL['successfully'] and respons_SQL['data']:
-            nick_name = respons_SQL['data'][0][0]
-            Bot.send_message(message.chat.id, 'Введите сумму на котору пополнить '+nick_name,reply_markup = Delete_markup)
-            Bot.register_next_step_handler(message,createpayment)
-        else:
-            print('У клиента ошибка ! '+str(message.chat.id))
-            Bot.send_message(message.chat.id, 'Ошибка!/nВаш ник не найден/nПовторите попытку или свяжитесь с подержкой!')
+        nick_name = respons_SQL['data'][0][0]
+        respons_SQL = QIWI_API.Off_Customer(Connection,message.chat.id,nick_name)
+        if respons_SQL['successfully']:
+            Bot.send_message(message.chat.id, 'Ваш ник отвязан\nВы можете зарегестрироваться под новым', reply_markup= Regestration_markup)
             Bot.register_next_step_handler(message,start)
+        
+    if("Назад" == message.text):
+        Bot.send_message(message.chat.id, 'Выберите действие',reply_markup= Main_menu_markup)
+        Bot.register_next_step_handler(message,main)
+
+def main(message):
+    nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
+    if nisk_respons_SQL['successfully'] and nisk_respons_SQL['data']:
+        nick_name = nisk_respons_SQL['data'][0][0]
+        if "Создать ссылку на пополнение Steam" == message.text:               
+            Bot.send_message(message.chat.id, 'Введите сумму на котору пополнить акаунт '+nick_name,reply_markup = Delete_markup)
+            Bot.register_next_step_handler(message,createpayment)
+            
+        if "Подтвердить статус оплаты " == message.text:
+            
+        if "Менеджер акаунтов" == message.text:
+            Bot.send_message(message.chat.id, 'Ваш текущий ник: '+nick_name,reply_markup= Nick_Name_menu_markup)
+            Bot.register_next_step_handler(message,NickNameMenu)
+    else:
+        print('У клиента ошибка ! '+str(message.chat.id))
+        Bot.send_message(message.chat.id, 'Ошибка!/nВаш ник не найден/nПовторите попытку или свяжитесь с подержкой!')
+        Bot.register_next_step_handler(message,main)
 
 def createpayment(message):
     if message.text.isdigit():
@@ -62,7 +88,7 @@ def createpayment(message):
             if respons_SQL['successfully'] and respons_SQL['data']:
                 order_URL = respons_SQL['data']
                 Bot.send_message(message.chat.id, 'Ваша ссылка для оплаты:\n'+order_URL)
-                Bot.send_message(message.chat.id, 'Средства поступят на счет после оплаты')
+                Bot.send_message(message.chat.id, 'Средства поступят на счет после оплаты',reply_markup= Main_menu_markup)
                 Bot.register_next_step_handler(message,main)
             else:
                 print('У клиента ошибка ! '+str(message.chat.id)+'\nСсылка на заказ не создана')
@@ -104,5 +130,5 @@ def registration(message):
 # Запускаем бота
 Connection = QIWI_API.Create_SQL_connection(QIWI_API.SQLHostName,QIWI_API.SQLUserName,QIWI_API.SQLRassword,QIWI_API.SQLBaseName)
 print("Старт:\n"+str(Bot.get_me()))
-Bot.polling(none_stop=False, interval=0)
+Bot.polling(none_stop=True, interval=0)
 print("Is Stop")
