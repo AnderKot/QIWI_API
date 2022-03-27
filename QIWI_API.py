@@ -203,7 +203,7 @@ def Check_Oreder(connection, api_secret_token, order_ID):
         status = str(respons_Json['status']['value'])
         # SQL ---
         query = "UPDATE orders SET Status = '"+status+"' WHERE No = '"+str(order_ID)+"';"
-        if execute_query(connection,query,'Обновление pаказа '+status+'|'+'ID'):
+        if execute_query(connection,query,'Обновление pаказа '+status+'|'+str(order_ID)):
             return {'successfully':True, 'data':status}
         else:
             {'successfully':False, 'data':''}
@@ -233,12 +233,18 @@ def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_I
                 Set_crossed(connection,order_ID,nickName,amount_KZT_str,tg_ID)
     # Обновление статусов заказов ожидающих исполнение
     query = "SELECT No,KZ FROM orders WHERE NickName = '"+nickName+"' AND Status = 'CROSSED';"
-    respons_SQL = execute_query(connection,query,'Отбор заказов на конвертацию '+nickName)
+    respons_SQL = execute_query(connection,query,'Отбор заказов на исполнение '+nickName)
     if respons_SQL['successfully'] and respons_SQL['data']:
+        coutn_orders = 0
         for rows in respons_SQL['data']:
             order_ID = rows[0]
             amount_KZT = round(Decimal(rows[1]),2)
+            amount_KZT_str = str(amount_KZT)
             Send_To_Steam(api_access_token,nickName,amount_KZT,order_ID)
+            if respons_API['successfully']:
+                Set_comleted(connection,order_ID,nickName,amount_KZT_str,tg_ID)
+                coutn_orders += 1
+        return {'successfully':True, 'data':coutn_orders}
     else:
         return {'successfully':False, 'data':''}
         
@@ -278,7 +284,16 @@ def Set_crossed(connection,order_ID,nickName,amount_KZT,tg_ID):
     respons_SQL = execute_query(connection,query,'Подтверждение перевода '+amount_KZT+' Тенге на '+order_ID_str)
     query = "UPDATE customers SET KZ = KZ + "+amount_KZT+" WHERE NickName = '"+nickName+"' AND TgID = "+tg_ID+";"
     respons_SQL = execute_query(connection,query,'Запись на счет '+nickName+' '+amount_KZT+' Тенге')
-    
+
+# Убрать KZT с акаунта, перевести заказ в "COMPLETED"
+def Set_comleted(connection,order_ID,nickName,amount_KZT,tg_ID):
+    datetime_str = str(datetime.datetime.now().isoformat())
+    order_ID_str = str(order_ID)
+    query = "UPDATE customers SET KZ = KZ - "+amount_KZT+" WHERE NickName = '"+nickName+"' AND TgID = "+tg_ID+";"
+    respons_SQL = execute_query(connection,query,'списывание со счета '+nickName+' '+amount_KZT+' Тенге')
+    query = "UPDATE orders SET PiadDateTime = '"+datetime_str+"', Status = 'COMPLETED' WHERE No = "+order_ID_str+";"
+    respons_SQL = execute_query(connection,query,'Завершение заказа')
+
 # Перевод на стим 31212
 def Send_To_Steam(api_access_token,nickName,amount_KZT,order_ID):
     amount_KZT_str = str(amount_KZT)
@@ -294,12 +309,16 @@ def Send_To_Steam(api_access_token,nickName,amount_KZT,order_ID):
     print(str(json_API))
     respons = requests.post(url, headers=headers_API, json=json_API)
 
-    print(str(respons))
-    print(str(respons.text))
+    if respons.ok:
+        return {'successfully':True, 'data':''}
+    else:
+        return {'successfully':False, 'data':''}
     
 # print(payment_history_last(Login,Token,10))
 Connection = Create_SQL_connection(SQLHostName,SQLUserName,SQLRassword,SQLBaseName)
-# Find_paid_order(Connection,Token,SecretKey,'ander_kot','777411561')
+
+#Set_comleted(Connection,'29','ander_kot','613.54','777411561')
+Find_paid_order(Connection,Token,SecretKey,'lj','777411561')
 # print(get_balance(Login,Token))
 # Check_Oreder(Connection,SecretKey,9)
 # create_customer(Connection,'TEST01')
@@ -308,5 +327,5 @@ Connection = Create_SQL_connection(SQLHostName,SQLUserName,SQLRassword,SQLBaseNa
 #  print(str(Get_Cross_Rates(Token)))
 #  Convert(Token,80)
 # print(str(Create_order(Connection,SecretKey,11,'Test','lj')))
-Send_To_Steam(Token,'Ander_kot', round(Decimal(613.54),2),'29')
+# Send_To_Steam(Token,'Ander_kot', 613.54,'40')
 # print(create_order(Connection,SecretKye,1,'Test paid','Ander_kot'))

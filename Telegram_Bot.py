@@ -1,6 +1,7 @@
 import QIWI_API
 import telebot
 from telebot import types
+from decimal import Decimal
 
 # Инициализация бота
 Bot = telebot.TeleBot('5293129292:AAFLb6IJl8XThYWUH4DpFrn7bZ4En-Noy_8')
@@ -18,6 +19,9 @@ Main_menu_markup.add(types.KeyboardButton("Менеджер акаунтов"))
 Nick_Name_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
 Nick_Name_menu_markup.add(types.KeyboardButton("Отвязать акаунт Steam"))
 Nick_Name_menu_markup.add(types.KeyboardButton("Назад"))
+
+Order_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
+Order_menu_markup.add(types.KeyboardButton("Назад"))
 
 # Функция, обрабатывающая команду /start
 @Bot.message_handler(commands=["start"])
@@ -62,13 +66,24 @@ def NickNameMenu(message):
 
 def main(message):
     nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
+    print(str(nisk_respons_SQL['data']))
+    print(str(nisk_respons_SQL['successfully']))
     if nisk_respons_SQL['successfully'] and nisk_respons_SQL['data']:
         nick_name = nisk_respons_SQL['data'][0][0]
         if "Создать ссылку на пополнение Steam" == message.text:               
-            Bot.send_message(message.chat.id, 'Введите сумму на котору пополнить акаунт '+nick_name,reply_markup = Delete_markup)
+            Bot.send_message(message.chat.id, 'Введите сумму на котору пополнить акаунт\n'+nick_name+'\nМинимум 20р',reply_markup = Order_menu_markup)
             Bot.register_next_step_handler(message,createpayment)
             
-        if "Подтвердить статус оплаты " == message.text:
+        if "Подтвердить статус оплаты" == message.text:
+            respons_QIWI = QIWI_API.Find_paid_order(Connection, QIWI_API.Token, QIWI_API.SecretKey, nick_name, message.chat.id)
+            print(str(respons_QIWI['data']))
+            print(str(respons_QIWI['successfully']))
+            if respons_QIWI['successfully'] and respons_QIWI['data']:
+                Bot.send_message(message.chat.id, 'Найдено'+respons_QIWI['data']+'оплат',reply_markup= Main_menu_markup)
+                Bot.register_next_step_handler(message,main)
+            else:
+                Bot.send_message(message.chat.id, 'Оплат по ссылкам не найдено !',reply_markup= Main_menu_markup)
+                Bot.register_next_step_handler(message,main)
             
         if "Менеджер акаунтов" == message.text:
             Bot.send_message(message.chat.id, 'Ваш текущий ник: '+nick_name,reply_markup= Nick_Name_menu_markup)
@@ -79,28 +94,36 @@ def main(message):
         Bot.register_next_step_handler(message,main)
 
 def createpayment(message):
-    if message.text.isdigit():
-        Bot.send_message(message.chat.id, 'Создание ссылки для оплаты')
-        respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
-        if respons_SQL['successfully'] and respons_SQL['data']:
-            nick_name = respons_SQL['data'][0][0]
-            respons_SQL = QIWI_API.Create_order(Connection, QIWI_API.SecretKey,message.text,'Account replenishment',nick_name)
-            if respons_SQL['successfully'] and respons_SQL['data']:
-                order_URL = respons_SQL['data']
-                Bot.send_message(message.chat.id, 'Ваша ссылка для оплаты:\n'+order_URL)
-                Bot.send_message(message.chat.id, 'Средства поступят на счет после оплаты',reply_markup= Main_menu_markup)
-                Bot.register_next_step_handler(message,main)
+    if("Назад" == message.text):
+        Bot.send_message(message.chat.id, 'Выберите действие',reply_markup= Main_menu_markup)
+        Bot.register_next_step_handler(message,main)
+    else:   
+        if message.text.isdigit():
+            amount_Dec = round(Decimal(message.text),2)
+            if amount_Dec >= round(Decimal('20'),2):
+                Bot.send_message(message.chat.id, 'Создание ссылки для оплаты')
+                respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
+                if respons_SQL['successfully'] and respons_SQL['data']:
+                    nick_name = respons_SQL['data'][0][0]
+                    respons_SQL = QIWI_API.Create_order(Connection, QIWI_API.SecretKey,message.text,'Account replenishment',nick_name)
+                    if respons_SQL['successfully'] and respons_SQL['data']:
+                        order_URL = respons_SQL['data']
+                        Bot.send_message(message.chat.id, 'После оплаты нажмите на "Подтвердить статус оплаты"\nВаша ссылка для оплаты:\n'+order_URL,reply_markup= Main_menu_markup)
+                        Bot.register_next_step_handler(message,main)
+                    else:
+                        print('У клиента ошибка ! '+str(message.chat.id)+'\nСсылка на заказ не создана')
+                        Bot.send_message(message.chat.id, 'Ошибка!\nСсылка не создана\nПовторите попытку или свяжитесь с подержкой!',reply_markup= Main_menu_markup)
+                        Bot.register_next_step_handler(message,main)
+                else:
+                    print('У клиента ошибка ! '+str(message.chat.id)+'\nНе найден ник при создании заказа')
+                    Bot.send_message(message.chat.id, 'Ошибка!\nВаш ник не найден\nПовторите попытку или свяжитесь с подержкой!',reply_markup = Main_menu_markup)
+                    Bot.register_next_step_handler(message,main)
             else:
-                print('У клиента ошибка ! '+str(message.chat.id)+'\nСсылка на заказ не создана')
-                Bot.send_message(message.chat.id, 'Ошибка!\nСсылка не создана\nПовторите попытку или свяжитесь с подержкой!',reply_markup= Main_menu_markup)
-                Bot.register_next_step_handler(message,main)
+                Bot.send_message(message.chat.id, 'Платеж должен составлять минимум 20',reply_markup = Order_menu_markup)
+                Bot.register_next_step_handler(message,createpayment)
         else:
-            print('У клиента ошибка ! '+str(message.chat.id)+'\nНе найден ник при создании заказа')
-            Bot.send_message(message.chat.id, 'Ошибка!\nВаш ник не найден\nПовторите попытку или свяжитесь с подержкой!',reply_markup= Main_menu_markup)
-            Bot.register_next_step_handler(message,main)
-    else:
-        Bot.send_message(message.chat.id, 'Используйте только цифры !')
-        Bot.register_next_step_handler(message,createpayment)
+            Bot.send_message(message.chat.id, 'Используйте только цифры',reply_markup = Order_menu_markup)
+            Bot.register_next_step_handler(message,createpayment)
         
     
 def end(message):
@@ -113,7 +136,7 @@ def end(message):
 def registration(message):
     respons_SQL = QIWI_API.Create_customer(Connection,message.chat.id,message.text)
     if respons_SQL['successfully']:
-        Bot.send_message(message.chat.id, 'На ваш акаунт зарегестрирован ник: '+message.text,reply_markup = Main_menu_markup)
+        Bot.send_message(message.chat.id, 'На ваш акаунт зарегестрирован ник: '+message.text+'\nДля начала попробуйте произвести минимальный платеж',reply_markup = Main_menu_markup)
         Bot.register_next_step_handler(message,main)
     else:
         Bot.send_message(message.chat.id, 'Ошибка при регестрации, повторите попытку или свяжитесь с подержкой!')
