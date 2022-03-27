@@ -127,7 +127,7 @@ def main(message):
                 Bot.send_message(message.chat.id, 'Подтверждено полненией '+respons_QIWI['data']['PAID']+'\nЗаказов отправлено на Steam '+respons_QIWI['data']['COMPLETED'] ,reply_markup= Main_menu_markup)
                 Bot.register_next_step_handler(message,main)
             else:
-                Bot.send_message(message.chat.id, 'Оплат по ссылкам не найдено !/nЕсли вы производили оплату свяжитесь с подержкой!/nhttps://discordapp.com/users/Ander_kot#5764/',reply_markup= Main_menu_markup)
+                Bot.send_message(message.chat.id, 'Оплат по ссылкам не найдено !\nЕсли вы производили оплату свяжитесь с подержкой!\nhttps://t.me/ander_kot_1',reply_markup= Main_menu_markup)
                 Bot.register_next_step_handler(message,main)
             
         if "Менеджер акаунтов" == message.text:
@@ -135,7 +135,7 @@ def main(message):
             Bot.register_next_step_handler(message,NickNameMenu)
     else:
         print('У клиента ошибка ! '+str(message.chat.id))
-        Bot.send_message(message.chat.id, 'Ошибка!/nВаш ник не найден/nПовторите попытку или свяжитесь с подержкой!/nhttps://discordapp.com/users/Ander_kot#5764/')
+        Bot.send_message(message.chat.id, 'Ошибка!/nВаш ник не найден/nПовторите попытку или свяжитесь с подержкой!\nhttps://t.me/ander_kot_1')
         Bot.register_next_step_handler(message,main)
 
 def createpayment(message):
@@ -157,11 +157,11 @@ def createpayment(message):
                         Bot.register_next_step_handler(message,main)
                     else:
                         print('У клиента ошибка ! '+str(message.chat.id)+'\nСсылка на заказ не создана')
-                        Bot.send_message(message.chat.id, 'Ошибка!\nСсылка не создана\nПовторите попытку или свяжитесь с подержкой!/nhttps://discordapp.com/users/Ander_kot#5764/',reply_markup= Main_menu_markup)
+                        Bot.send_message(message.chat.id, 'Ошибка!\nСсылка не создана\nПовторите попытку или свяжитесь с подержкой!\nhttps://t.me/ander_kot_1',reply_markup= Main_menu_markup)
                         Bot.register_next_step_handler(message,main)
                 else:
                     print('У клиента ошибка ! '+str(message.chat.id)+'\nНе найден ник при создании заказа')
-                    Bot.send_message(message.chat.id, 'Ошибка!\nВаш ник не найден\nПовторите попытку или свяжитесь с подержкой!/nhttps://discordapp.com/users/Ander_kot#5764/',reply_markup = Main_menu_markup)
+                    Bot.send_message(message.chat.id, 'Ошибка!\nВаш ник не найден\nПовторите попытку или свяжитесь с подержкой!\nhttps://t.me/ander_kot_1',reply_markup = Main_menu_markup)
                     Bot.register_next_step_handler(message,main)
             else:
                 Bot.send_message(message.chat.id, 'Платеж должен составлять минимум 20',reply_markup = Order_menu_markup)
@@ -184,7 +184,7 @@ def registration(message):
         Bot.send_message(message.chat.id, 'На ваш акаунт зарегестрирован ник: '+message.text+'\nДля начала попробуйте произвести минимальный платеж',reply_markup = Main_menu_markup)
         Bot.register_next_step_handler(message,main)
     else:
-        Bot.send_message(message.chat.id, 'Ошибка при регестрации, повторите попытку или свяжитесь с подержкой!/nhttps://discordapp.com/users/Ander_kot#5764/')
+        Bot.send_message(message.chat.id, 'Ошибка при регестрации, повторите попытку или свяжитесь с подержкой!\nhttps://t.me/ander_kot_1')
         Bot.register_next_step_handler(message,start)
 
 def Add_Steam(message):
@@ -198,7 +198,7 @@ def Add_Steam(message):
             Bot.send_message(message.chat.id, 'На ваш акаунт зарегестрирован ник: '+message.text+'\nОн выбран основным',reply_markup = Main_menu_markup)
             Bot.register_next_step_handler(message,main)
         else:
-            Bot.send_message(message.chat.id, 'Ошибка при регестрации, повторите попытку или свяжитесь с подержкой!/nhttps://discordapp.com/users/Ander_kot#5764/')
+            Bot.send_message(message.chat.id, 'Ошибка при регестрации, повторите попытку или свяжитесь с подержкой!\nhttps://t.me/ander_kot_1')
             Bot.register_next_step_handler(message,start)
 
 

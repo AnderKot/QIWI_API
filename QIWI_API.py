@@ -148,8 +148,8 @@ def Create_order(connection, api_secret_token, amount, comment, nick_name):
         # Создание заказа в QSL
         query = "SELECT MAX(No) FROM orders;"
         respons_SQL = execute_query(connection,query,'Сбор ID заказа')
-        order_ID = respons_SQL['data'][0][0]
-        query = "INSERT INTO orders(No,NickName,RU,CreateDateTime) VALUES ("+order_ID+",'"+nick_name+"',"+amount_str+",'"+datetime_str+"');"
+        order_ID = respons_SQL['data'][0][0]+5
+        query = "INSERT INTO orders(No,NickName,RU,CreateDateTime) VALUES ("+str(order_ID)+",'"+nick_name+"',"+amount_str+",'"+datetime_str+"');"
         respons_SQL = execute_query(connection,query,'Создание pаказа для '+nick_name)
         if respons_SQL['successfully']:
             # Создание заказа в QIWI API
@@ -226,7 +226,7 @@ def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_I
     if respons_SQL['successfully'] and respons_SQL['data']:
         for rows in respons_SQL['data']:          
             respons_API = Check_Oreder(connection,api_secret_token,rows[0])
-            if respons_API['successfully']:
+            if respons_API['successfully'] and (respons_API['data'] == 'PAID'):
                 count_PAID_orders += 1
     # Обновление статусов заказов ожидающих конвертацию в Тенге     
     query = "SELECT No,RU FROM orders WHERE NickName = '"+nickName+"' AND Status = 'PAID';"
