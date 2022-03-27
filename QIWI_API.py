@@ -254,14 +254,17 @@ def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_I
         for rows in respons_SQL['data']:
             order_ID = int(rows[0]) + 1
             order_ID_str = str(order_ID)
+            order_Paid_ID = int(rows[0]) + 1
+            order_Paid_ID_str = str(order_ID)
             amount_KZT = round(Decimal(rows[1]),2)
             amount_KZT_str = str(amount_KZT)
-            respons_API = Send_To_Steam(api_access_token,nickName,amount_KZT,order_ID_str)
-            print(str(respons_API))
+            respons_API = Send_To_Steam(api_access_token,nickName,amount_KZT,order_Paid_ID_str)
             if respons_API['successfully']:
                 Set_comleted(connection,order_ID_str,nickName,amount_KZT_str,tg_ID)
                 count_COMPLETED_orders += 1
-        return {'successfully':True, 'data':{"PAID":count_PAID_orders,"CROSSED":count_CROSSED_orders,"COMPLETED":count_COMPLETED_orders}}
+    
+    if (count_PAID_orders + count_CROSSED_orders + count_COMPLETED_orders) > 0:
+        return {'successfully':True, 'data':{"PAID":str(count_PAID_orders),"CROSSED":str(count_CROSSED_orders),"COMPLETED":str(count_COMPLETED_orders)}}
     else:
         return {'successfully':False, 'data':''}
         
@@ -316,10 +319,14 @@ def Set_crossed(connection,order_ID,nickName,amount_KZT,tg_ID):
 
 # Убрать KZT с акаунта, перевести заказ в "COMPLETED"
 def Set_comleted(connection,order_ID,nickName,amount_KZT,tg_ID):
-    amount_KZT_str = str(amount_KZT) 
+    amount_KZT_str = str(amount_KZT)
+    print('1'+amount_KZT_str) 
     tg_ID_str = str(tg_ID)
+    print('2'+tg_ID_str)
     datetime_str = str(datetime.datetime.now().isoformat())
+    print('3'+datetime_str)
     order_ID_str = str(order_ID)
+    print('4'+order_ID_str)
     query = "UPDATE customers SET KZ = KZ - "+amount_KZT_str+" WHERE NickName = '"+nickName+"' AND TgID = "+tg_ID_str+";"
     respons_SQL = execute_query(connection,query,'списывание со счета '+nickName+' '+amount_KZT_str+' Тенге')
     query = "UPDATE orders SET PiadDateTime = '"+datetime_str+"', Status = 'COMPLETED' WHERE No = "+order_ID_str+";"
@@ -347,7 +354,7 @@ def Send_To_Steam(api_access_token,nickName,amount_KZT,order_ID):
 # print(payment_history_last(Login,Token,10))
 # Connection = Create_SQL_connection(SQLHostName,SQLUserName,SQLRassword,SQLBaseName)
 
-#Set_comleted(Connection,'29','ander_kot','613.54','777411561')
+# Set_comleted(Connection,'31','Ander_kot','100','777411561')
 # Find_paid_order(Connection,Token,SecretKey,'Логинмой','187401430')
 # print(get_balance(Login,Token))
 # Check_Oreder(Connection,SecretKey,9)

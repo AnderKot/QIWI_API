@@ -127,7 +127,7 @@ def main(message):
         if "Подтвердить статус оплаты" == message.text:
             respons_QIWI = QIWI_API.Find_paid_order(Connection, QIWI_API.Token, QIWI_API.SecretKey, nick_name, message.chat.id)
             if respons_QIWI['successfully'] and respons_QIWI['data']:
-                Bot.send_message(message.chat.id, 'Подтверждено\n'+respons_QIWI['data'][PAID]+' пополненией\n'+respons_QIWI['data'][COMPLETED]+' заказов отправлено на Steam',reply_markup= Main_menu_markup)
+                Bot.send_message(message.chat.id, 'Подтверждено\n'+respons_QIWI['data']['PAID']+' пополненией\n'+respons_QIWI['data']['COMPLETED']+' заказов отправлено на Steam',reply_markup= Main_menu_markup)
                 Bot.register_next_step_handler(message,main)
             else:
                 Bot.send_message(message.chat.id, 'Оплат по ссылкам не найдено !',reply_markup= Main_menu_markup)
