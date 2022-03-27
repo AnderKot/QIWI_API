@@ -69,7 +69,7 @@ def Convert(api_access_token,order_ID,amount):
     if respons.ok:
         return {'successfully':True, 'data':''}
     else:
-        return {'successfully':False, 'data':''}
+        return {'successfully':False, 'data':respons.text}
         
 
 # Последние n платежей --
@@ -135,7 +135,8 @@ def Get_Commission(connection):
  
 # Создание заказа
 def Create_order(connection, api_secret_token, amount, comment, nick_name):
-    datetime_str = str(datetime.datetime.now().isoformat())
+    datetime_str = str(datetime.datetime.today().replace(microsecond=0).isoformat())
+    print(datetime_str)
     print(api_secret_token)
     # Запрос коммиссии
     respons_SQL = Get_Commission(connection)
@@ -149,8 +150,8 @@ def Create_order(connection, api_secret_token, amount, comment, nick_name):
         respons_SQL = execute_query(connection,query,'Создание pаказа для '+nick_name)
         if respons_SQL['successfully']:
             query = "SELECT No FROM orders WHERE CreateDateTime = '"+datetime_str+"';"
-            respons_SQL = execute_query(connection,query,'Сбор ID pаказа')
-            if respons_SQL['successfully']:
+            respons_SQL = execute_query(connection,query,'Сбор ID заказа')
+            if respons_SQL['successfully']and respons_SQL['data']:
                 order_ID = respons_SQL['data'][0][0]
                 # Создание заказа в QIWI API
                 url = "https://api.qiwi.com/partner/bill/v1/bills/"+str(order_ID)
@@ -225,7 +226,6 @@ def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_I
     query = "SELECT No FROM orders WHERE NickName = '"+nickName+"' AND Status = 'WAITING';"
     respons_SQL = execute_query(connection,query,'Отбор заказов на подтверждение '+nickName)
     count_PAID_orders = 0
-    print(str(respons_SQL['data']))
     if respons_SQL['successfully'] and respons_SQL['data']:
         for rows in respons_SQL['data']:          
             Check_Oreder(connection,api_secret_token,rows[0])
@@ -237,11 +237,15 @@ def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_I
     if respons_SQL['successfully'] and respons_SQL['data']:
         for rows in respons_SQL['data']:
             order_ID_str = rows[0]
+            order_API_str = rows[0] + 1
+            print(order_ID_str)
+            print(order_API_str)
             cross = Decimal(Get_Cross_Rates(api_access_token))
             amount_RUB = Decimal(rows[1])
             amount_KZT = amount_RUB/cross
             amount_KZT_str = str(round(amount_KZT,2))
-            respons_API = Convert(api_access_token,order_ID_str,amount_KZT_str)
+            respons_API = Convert(api_access_token,order_API_str,amount_KZT_str)
+            print(str(respons_API['data']))
             if respons_API['successfully']:
                 Set_crossed(connection,order_ID_str,nickName,amount_KZT_str,tg_ID)
                 count_CROSSED_orders += 1
@@ -249,13 +253,15 @@ def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_I
     query = "SELECT No,KZ FROM orders WHERE NickName = '"+nickName+"' AND Status = 'CROSSED';"
     print(query)
     respons_SQL = execute_query(connection,query,'Отбор заказов на исполнение '+nickName)
+    count_COMPLETED_orders = 0
     if respons_SQL['successfully'] and respons_SQL['data']:
-        count_COMPLETED_orders = 0
         for rows in respons_SQL['data']:
-            order_ID = int(rows[0]) + 1
+            order_ID = int(rows[0]) 
             order_ID_str = str(order_ID)
-            order_Paid_ID = int(rows[0]) + 1
-            order_Paid_ID_str = str(order_ID)
+            order_Paid_ID = int(rows[0]) + 2
+            order_Paid_ID_str = str(order_Paid_ID)
+            print(order_ID_str)
+            print(order_Paid_ID_str)
             amount_KZT = round(Decimal(rows[1]),2)
             amount_KZT_str = str(amount_KZT)
             respons_API = Send_To_Steam(api_access_token,nickName,amount_KZT,order_Paid_ID_str)
