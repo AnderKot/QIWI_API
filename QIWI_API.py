@@ -148,7 +148,7 @@ def Create_order(connection, api_secret_token, amount, comment, nick_name):
         query = "INSERT INTO orders(NickName,RU,CreateDateTime) VALUES ('"+nick_name+"',"+amount_str+",'"+datetime_str+"');"
         respons_SQL = execute_query(connection,query,'Создание pаказа для '+nick_name)
         if respons_SQL['successfully']:
-            query = "SELECT MAX(No) FROM orders;"
+            query = "SELECT No FROM orders WHERE CreateDateTime = '"+datetime_str+"';"
             respons_SQL = execute_query(connection,query,'Сбор ID pаказа')
             if respons_SQL['successfully']:
                 order_ID = respons_SQL['data'][0][0]
@@ -224,13 +224,16 @@ def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_I
     # Обновление статусов заказов ожидающих оплату
     query = "SELECT No FROM orders WHERE NickName = '"+nickName+"' AND Status = 'WAITING';"
     respons_SQL = execute_query(connection,query,'Отбор заказов на подтверждение '+nickName)
+    count_PAID_orders = 0
     print(str(respons_SQL['data']))
     if respons_SQL['successfully'] and respons_SQL['data']:
         for rows in respons_SQL['data']:          
             Check_Oreder(connection,api_secret_token,rows[0])
+            count_PAID_orders += 1
     # Обновление статусов заказов ожидающих конвертацию в Тенге     
     query = "SELECT No,RU FROM orders WHERE NickName = '"+nickName+"' AND Status = 'PAID';"
     respons_SQL = execute_query(connection,query,'Отбор заказов на конвертацию '+nickName)
+    count_CROSSED_orders = 0
     if respons_SQL['successfully'] and respons_SQL['data']:
         for rows in respons_SQL['data']:
             order_ID_str = rows[0]
@@ -241,13 +244,13 @@ def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_I
             respons_API = Convert(api_access_token,order_ID_str,amount_KZT_str)
             if respons_API['successfully']:
                 Set_crossed(connection,order_ID_str,nickName,amount_KZT_str,tg_ID)
-
+                count_CROSSED_orders += 1
     # Обновление статусов заказов ожидающих исполнение
     query = "SELECT No,KZ FROM orders WHERE NickName = '"+nickName+"' AND Status = 'CROSSED';"
     print(query)
     respons_SQL = execute_query(connection,query,'Отбор заказов на исполнение '+nickName)
     if respons_SQL['successfully'] and respons_SQL['data']:
-        coutn_orders = 0
+        count_COMPLETED_orders = 0
         for rows in respons_SQL['data']:
             order_ID = int(rows[0]) + 1
             order_ID_str = str(order_ID)
@@ -257,8 +260,8 @@ def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_I
             print(str(respons_API))
             if respons_API['successfully']:
                 Set_comleted(connection,order_ID_str,nickName,amount_KZT_str,tg_ID)
-                coutn_orders += 1
-        return {'successfully':True, 'data':coutn_orders}
+                count_COMPLETED_orders += 1
+        return {'successfully':True, 'data':{"PAID":count_PAID_orders,"CROSSED":count_CROSSED_orders,"COMPLETED":count_COMPLETED_orders}}
     else:
         return {'successfully':False, 'data':''}
         
