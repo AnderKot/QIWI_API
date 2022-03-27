@@ -17,7 +17,7 @@ Main_menu_markup.add(types.KeyboardButton("Подтвердить статус �
 Main_menu_markup.add(types.KeyboardButton("Менеджер акаунтов"))
 
 Nick_Name_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
-Nick_Name_menu_markup.add(types.KeyboardButton("Отвязать акаунт Steam"))
+Nick_Name_menu_markup.add(types.KeyboardButton("Добавить акаунт Steam"))
 Nick_Name_menu_markup.add(types.KeyboardButton("Сменить Steam акаунт"))
 Nick_Name_menu_markup.add(types.KeyboardButton("Назад"))
 
@@ -56,16 +56,22 @@ def start(message):
         Bot.send_message(message.chat.id, 'Бип ? Буп !\nБот перезагружен', reply_markup= Regestration_markup)
 
 def NickNameMenu(message):
-    if("Отвязать акаунт Steam" == message.text):
-        respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
-        nick_name = respons_SQL['data'][0][0]
-        respons_SQL = QIWI_API.Off_Customer(Connection,message.chat.id,nick_name)
-        if respons_SQL['successfully']:
-            Bot.send_message(message.chat.id, 'Ваш ник отвязан\nВы можете зарегестрироваться под новым', reply_markup= Regestration_markup)
-            Bot.register_next_step_handler(message,start)
+    if("Добавить акаунт Steam" == message.text):
+        print("Запрос регестрации: "+str(message.chat.id))
+        Bot.send_message(message.chat.id, 'Пожалуйста введите свой логин в Steam\nОн расположен в окне Steam во вкладке с верху с права',reply_markup = Change_Nick_menu_markup)
+        login_tip_img = open('Logintip.png','rb')
+        Bot.send_photo(message.chat.id,login_tip_img)
+        Bot.register_next_step_handler(message,Add_Steam)
+        #nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
+        #nick_name = nisk_respons_SQL['data'][0][0]
+        #print('m'+nick_name)
+        #respons_SQL = QIWI_API.Off_Customer(Connection,message.chat.id,nick_name)
+        #if respons_SQL['successfully']:
+        #    Bot.send_message(message.chat.id, 'Ваш ник отвязан\nВы можете зарегестрироваться под новым', reply_markup= Regestration_markup)
+        #    Bot.register_next_step_handler(message,start)
 
     if("Сменить Steam акаунт" == message.text):
-        respons_SQL = Get_NickNames(Connection,message.chat.id)
+        respons_SQL = QIWI_API.Get_NickNames(Connection,message.chat.id)
         if respons_SQL['successfully']:
             Bot.send_message(message.chat.id, 'Список акаунтов Steam')
             coutn_rows = 1
@@ -86,42 +92,42 @@ def NickNameMenu(message):
         Bot.register_next_step_handler(message,main)
 
 def ChangeNickName(message):
+    nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
+    nick_name = nisk_respons_SQL['data'][0][0]
+    print('C'+nick_name)
     if("Назад" == message.text):
-        Bot.send_message(message.chat.id, 'Выберите действие',reply_markup= Nick_Name_menu_markup)
+        Bot.send_message(message.chat.id, 'Ваш текущий ник: '+nick_name,reply_markup= Nick_Name_menu_markup)
         Bot.register_next_step_handler(message,NickNameMenu)
     else:
-        respons_SQL = Get_NickNames(Connection,message.chat.id)
         finded = False;
+        respons_SQL = QIWI_API.Get_NickNames(Connection,message.chat.id)
         for rows in respons_SQL['data']:
                 nick_name = rows[0]
                 if nick_name == message.text:
                     finded = True
-                    respons_SQL = Set_default_wallet(Connection,nick_name,message.chat.id)
+                    respons_SQL = QIWI_API.Set_default_Nick(Connection,nick_name,message.chat.id)
                     if respons_SQL['successfully']:
-                       Bot.send_message(message.chat.id, 'Выпереключены на Steam '+nick_name,reply_markup= Change_Nick_menu_markup) 
-                       Bot.register_next_step_handler(message, ChangeNickName)
+                       Bot.send_message(message.chat.id, 'Выпереключены на Steam '+nick_name,reply_markup= Nick_Name_menu_markup) 
+                       Bot.register_next_step_handler(message, NickNameMenu)
         if not finded:
-            Bot.send_message(message.chat.id, 'Такой Steam не найден'+nick_name,reply_markup= Change_Nick_menu_markup) 
+            Bot.send_message(message.chat.id, 'Такой Steam не найден '+message.text,reply_markup= Change_Nick_menu_markup) 
             Bot.register_next_step_handler(message, ChangeNickName)
 
 
 
 def main(message):
     nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
-    print(str(nisk_respons_SQL['data']))
-    print(str(nisk_respons_SQL['successfully']))
     if nisk_respons_SQL['successfully'] and nisk_respons_SQL['data']:
         nick_name = nisk_respons_SQL['data'][0][0]
+        print(nick_name)
         if "Создать ссылку на пополнение Steam" == message.text:               
             Bot.send_message(message.chat.id, 'Введите сумму на котору пополнить акаунт\n'+nick_name+'\nМинимум 20р',reply_markup = Order_menu_markup)
             Bot.register_next_step_handler(message,createpayment)
             
         if "Подтвердить статус оплаты" == message.text:
             respons_QIWI = QIWI_API.Find_paid_order(Connection, QIWI_API.Token, QIWI_API.SecretKey, nick_name, message.chat.id)
-            print(str(respons_QIWI['data']))
-            print(str(respons_QIWI['successfully']))
             if respons_QIWI['successfully'] and respons_QIWI['data']:
-                Bot.send_message(message.chat.id, 'Найдено'+respons_QIWI['data']+'оплат',reply_markup= Main_menu_markup)
+                Bot.send_message(message.chat.id, 'Подтверждено\n'+respons_QIWI['data']['PAID']+' пополненией\n'+respons_QIWI['data']['COMPLETED']+' заказов отправлено на Steam',reply_markup= Main_menu_markup)
                 Bot.register_next_step_handler(message,main)
             else:
                 Bot.send_message(message.chat.id, 'Оплат по ссылкам не найдено !',reply_markup= Main_menu_markup)
@@ -132,7 +138,7 @@ def main(message):
             Bot.register_next_step_handler(message,NickNameMenu)
     else:
         print('У клиента ошибка ! '+str(message.chat.id))
-        Bot.send_message(message.chat.id, 'Ошибка!/nВаш ник не найден/nПовторите попытку или свяжитесь с подержкой!')
+        Bot.send_message(message.chat.id, 'Ошибка!/nВаш ник не найден/nПовторите попытку или свяжитесь с подержкой!/nhttps://discordapp.com/users/Ander_kot#5764/')
         Bot.register_next_step_handler(message,main)
 
 def createpayment(message):
@@ -154,11 +160,11 @@ def createpayment(message):
                         Bot.register_next_step_handler(message,main)
                     else:
                         print('У клиента ошибка ! '+str(message.chat.id)+'\nСсылка на заказ не создана')
-                        Bot.send_message(message.chat.id, 'Ошибка!\nСсылка не создана\nПовторите попытку или свяжитесь с подержкой!',reply_markup= Main_menu_markup)
+                        Bot.send_message(message.chat.id, 'Ошибка!\nСсылка не создана\nПовторите попытку или свяжитесь с подержкой!/nhttps://discordapp.com/users/Ander_kot#5764/',reply_markup= Main_menu_markup)
                         Bot.register_next_step_handler(message,main)
                 else:
                     print('У клиента ошибка ! '+str(message.chat.id)+'\nНе найден ник при создании заказа')
-                    Bot.send_message(message.chat.id, 'Ошибка!\nВаш ник не найден\nПовторите попытку или свяжитесь с подержкой!',reply_markup = Main_menu_markup)
+                    Bot.send_message(message.chat.id, 'Ошибка!\nВаш ник не найден\nПовторите попытку или свяжитесь с подержкой!/nhttps://discordapp.com/users/Ander_kot#5764/',reply_markup = Main_menu_markup)
                     Bot.register_next_step_handler(message,main)
             else:
                 Bot.send_message(message.chat.id, 'Платеж должен составлять минимум 20',reply_markup = Order_menu_markup)
@@ -181,16 +187,23 @@ def registration(message):
         Bot.send_message(message.chat.id, 'На ваш акаунт зарегестрирован ник: '+message.text+'\nДля начала попробуйте произвести минимальный платеж',reply_markup = Main_menu_markup)
         Bot.register_next_step_handler(message,main)
     else:
-        Bot.send_message(message.chat.id, 'Ошибка при регестрации, повторите попытку или свяжитесь с подержкой!')
+        Bot.send_message(message.chat.id, 'Ошибка при регестрации, повторите попытку или свяжитесь с подержкой!/nhttps://discordapp.com/users/Ander_kot#5764/')
         Bot.register_next_step_handler(message,start)
 
+def Add_Steam(message):
+    if("Назад" == message.text):
+        Bot.send_message(message.chat.id, 'Выберите действие',reply_markup= Nick_Name_menu_markup)
+        Bot.register_next_step_handler(message,NickNameMenu)
+    else:
+        respons_SQL = QIWI_API.Create_customer(Connection,message.chat.id,message.text)
+        if respons_SQL['successfully']:
+            QIWI_API.Set_default_Nick(Connection,message.text,message.chat.id)
+            Bot.send_message(message.chat.id, 'На ваш акаунт зарегестрирован ник: '+message.text+'\nОн выбран основным',reply_markup = Main_menu_markup)
+            Bot.register_next_step_handler(message,main)
+        else:
+            Bot.send_message(message.chat.id, 'Ошибка при регестрации, повторите попытку или свяжитесь с подержкой!/nhttps://discordapp.com/users/Ander_kot#5764/')
+            Bot.register_next_step_handler(message,start)
 
-            
-# Получение сообщений от юзера
-# @Bot.message_handler(content_types=["text"])
-# def handle_text(message):
-#     print(str(message.chat.id))
-#     Bot.send_message(message.chat.id, 'Вы написали: ' + message.text)
 
 # Запускаем бота
 Connection = QIWI_API.Create_SQL_connection(QIWI_API.SQLHostName,QIWI_API.SQLUserName,QIWI_API.SQLRassword,QIWI_API.SQLBaseName)

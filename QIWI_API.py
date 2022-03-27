@@ -69,7 +69,7 @@ def Convert(api_access_token,order_ID,amount):
     if respons.ok:
         return {'successfully':True, 'data':''}
     else:
-        return {'successfully':False, 'data':''}
+        return {'successfully':False, 'data':respons.text}
         
 
 # Последние n платежей --
@@ -135,7 +135,8 @@ def Get_Commission(connection):
  
 # Создание заказа
 def Create_order(connection, api_secret_token, amount, comment, nick_name):
-    datetime_str = str(datetime.datetime.now().isoformat())
+    datetime_str = str(datetime.datetime.today().replace(microsecond=0).isoformat())
+    print(datetime_str)
     print(api_secret_token)
     # Запрос коммиссии
     respons_SQL = Get_Commission(connection)
@@ -148,9 +149,9 @@ def Create_order(connection, api_secret_token, amount, comment, nick_name):
         query = "INSERT INTO orders(NickName,RU,CreateDateTime) VALUES ('"+nick_name+"',"+amount_str+",'"+datetime_str+"');"
         respons_SQL = execute_query(connection,query,'Создание pаказа для '+nick_name)
         if respons_SQL['successfully']:
-            query = "SELECT MAX(No) FROM orders;"
-            respons_SQL = execute_query(connection,query,'Сбор ID pаказа')
-            if respons_SQL['successfully']:
+            query = "SELECT No FROM orders WHERE CreateDateTime = '"+datetime_str+"';"
+            respons_SQL = execute_query(connection,query,'Сбор ID заказа')
+            if respons_SQL['successfully']and respons_SQL['data']:
                 order_ID = respons_SQL['data'][0][0]
                 # Создание заказа в QIWI API
                 url = "https://api.qiwi.com/partner/bill/v1/bills/"+str(order_ID)
@@ -224,41 +225,52 @@ def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_I
     # Обновление статусов заказов ожидающих оплату
     query = "SELECT No FROM orders WHERE NickName = '"+nickName+"' AND Status = 'WAITING';"
     respons_SQL = execute_query(connection,query,'Отбор заказов на подтверждение '+nickName)
-    print(str(respons_SQL['data']))
+    count_PAID_orders = 0
     if respons_SQL['successfully'] and respons_SQL['data']:
         for rows in respons_SQL['data']:          
             Check_Oreder(connection,api_secret_token,rows[0])
+            count_PAID_orders += 1
     # Обновление статусов заказов ожидающих конвертацию в Тенге     
     query = "SELECT No,RU FROM orders WHERE NickName = '"+nickName+"' AND Status = 'PAID';"
     respons_SQL = execute_query(connection,query,'Отбор заказов на конвертацию '+nickName)
+    count_CROSSED_orders = 0
     if respons_SQL['successfully'] and respons_SQL['data']:
         for rows in respons_SQL['data']:
             order_ID_str = rows[0]
+            order_API_str = rows[0] + 1
+            print(order_ID_str)
+            print(order_API_str)
             cross = Decimal(Get_Cross_Rates(api_access_token))
             amount_RUB = Decimal(rows[1])
             amount_KZT = amount_RUB/cross
             amount_KZT_str = str(round(amount_KZT,2))
-            respons_API = Convert(api_access_token,order_ID_str,amount_KZT_str)
+            respons_API = Convert(api_access_token,order_API_str,amount_KZT_str)
+            print(str(respons_API['data']))
             if respons_API['successfully']:
                 Set_crossed(connection,order_ID_str,nickName,amount_KZT_str,tg_ID)
-
+                count_CROSSED_orders += 1
     # Обновление статусов заказов ожидающих исполнение
     query = "SELECT No,KZ FROM orders WHERE NickName = '"+nickName+"' AND Status = 'CROSSED';"
     print(query)
     respons_SQL = execute_query(connection,query,'Отбор заказов на исполнение '+nickName)
+    count_COMPLETED_orders = 0
     if respons_SQL['successfully'] and respons_SQL['data']:
-        coutn_orders = 0
         for rows in respons_SQL['data']:
-            order_ID = int(rows[0]) + 1
+            order_ID = int(rows[0]) 
             order_ID_str = str(order_ID)
+            order_Paid_ID = int(rows[0]) + 2
+            order_Paid_ID_str = str(order_Paid_ID)
+            print(order_ID_str)
+            print(order_Paid_ID_str)
             amount_KZT = round(Decimal(rows[1]),2)
             amount_KZT_str = str(amount_KZT)
-            respons_API = Send_To_Steam(api_access_token,nickName,amount_KZT,order_ID_str)
-            print(str(respons_API))
+            respons_API = Send_To_Steam(api_access_token,nickName,amount_KZT,order_Paid_ID_str)
             if respons_API['successfully']:
                 Set_comleted(connection,order_ID_str,nickName,amount_KZT_str,tg_ID)
-                coutn_orders += 1
-        return {'successfully':True, 'data':coutn_orders}
+                count_COMPLETED_orders += 1
+    
+    if (count_PAID_orders + count_CROSSED_orders + count_COMPLETED_orders) > 0:
+        return {'successfully':True, 'data':{"PAID":str(count_PAID_orders),"CROSSED":str(count_CROSSED_orders),"COMPLETED":str(count_COMPLETED_orders)}}
     else:
         return {'successfully':False, 'data':''}
         
@@ -281,11 +293,11 @@ def Set_default_wallet(connection, login, api_access_token, wallet):
     return {'successfully':False, 'data':''}
 
 # Установка Steam акаунта по умолчанию
-def Set_default_wallet(connection,nickName,tg_ID ):
+def Set_default_Nick(connection,nickName,tg_ID ):
     tg_ID_str = str(tg_ID)
-    query = "UPDATE customer SET Logined = 0 WHERE TgID = '"+tg_ID_str+"';"
+    query = "UPDATE customers SET Logined = 0 WHERE TgID = '"+tg_ID_str+"';"
     if execute_query(connection,query,'Выключение Steam акаунтов '+tg_ID_str):
-        query = "UPDATE customer SET Logined = 1 WHERE TgID = '"+tg_ID_str+"' AND NisKName = '"+nickName+"';"
+        query = "UPDATE customers SET Logined = 1 WHERE TgID = '"+tg_ID_str+"' AND NickName = '"+nickName+"';"
         if execute_query(connection,query,'Включение Steam акаунта '+nickName+' клиенту ' +tg_ID_str):
             return {'successfully':True, 'data':''}
     return {'successfully':False, 'data':''}
@@ -313,10 +325,14 @@ def Set_crossed(connection,order_ID,nickName,amount_KZT,tg_ID):
 
 # Убрать KZT с акаунта, перевести заказ в "COMPLETED"
 def Set_comleted(connection,order_ID,nickName,amount_KZT,tg_ID):
-    amount_KZT_str = str(amount_KZT) 
+    amount_KZT_str = str(amount_KZT)
+    print('1'+amount_KZT_str) 
     tg_ID_str = str(tg_ID)
+    print('2'+tg_ID_str)
     datetime_str = str(datetime.datetime.now().isoformat())
+    print('3'+datetime_str)
     order_ID_str = str(order_ID)
+    print('4'+order_ID_str)
     query = "UPDATE customers SET KZ = KZ - "+amount_KZT_str+" WHERE NickName = '"+nickName+"' AND TgID = "+tg_ID_str+";"
     respons_SQL = execute_query(connection,query,'списывание со счета '+nickName+' '+amount_KZT_str+' Тенге')
     query = "UPDATE orders SET PiadDateTime = '"+datetime_str+"', Status = 'COMPLETED' WHERE No = "+order_ID_str+";"
@@ -344,7 +360,7 @@ def Send_To_Steam(api_access_token,nickName,amount_KZT,order_ID):
 # print(payment_history_last(Login,Token,10))
 # Connection = Create_SQL_connection(SQLHostName,SQLUserName,SQLRassword,SQLBaseName)
 
-#Set_comleted(Connection,'29','ander_kot','613.54','777411561')
+# Set_comleted(Connection,'31','Ander_kot','100','777411561')
 # Find_paid_order(Connection,Token,SecretKey,'Логинмой','187401430')
 # print(get_balance(Login,Token))
 # Check_Oreder(Connection,SecretKey,9)
