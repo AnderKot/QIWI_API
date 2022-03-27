@@ -146,45 +146,42 @@ def Create_order(connection, api_secret_token, amount, comment, nick_name):
         commission_decimal = Decimal(commission)/Decimal(100)+Decimal(1)
         amount_str = str(round(amount_decimal*commission_decimal,2))
         # Создание заказа в QSL
-        query = "INSERT INTO orders(NickName,RU,CreateDateTime) VALUES ('"+nick_name+"',"+amount_str+",'"+datetime_str+"');"
+        query = "SELECT MAX(No) FROM orders;"
+        respons_SQL = execute_query(connection,query,'Сбор ID заказа')
+        order_ID = respons_SQL['data'][0][0]
+        query = "INSERT INTO orders(No,NickName,RU,CreateDateTime) VALUES ("+order_ID+",'"+nick_name+"',"+amount_str+",'"+datetime_str+"');"
         respons_SQL = execute_query(connection,query,'Создание pаказа для '+nick_name)
         if respons_SQL['successfully']:
-            query = "SELECT No FROM orders WHERE CreateDateTime = '"+datetime_str+"';"
-            respons_SQL = execute_query(connection,query,'Сбор ID заказа')
-            if respons_SQL['successfully']and respons_SQL['data']:
-                order_ID = respons_SQL['data'][0][0]
-                # Создание заказа в QIWI API
-                url = "https://api.qiwi.com/partner/bill/v1/bills/"+str(order_ID)
-                end_datetime = datetime.date.today() + datetime.timedelta(1)
-                # Заголовок
-                headers_API = CaseInsensitiveDict()
-                headers_API["content-type"] = "application/json"
-                headers_API["accept"] = "application/json"
-                headers_API["Authorization"] = "Bearer " + api_secret_token
-                # Данные
-                post_json = {"amount": {"currency": "RUB","value": ""},"comment": "","expirationDateTime": "","customer": {"phone": "","email": "","account": ""},"customFields" : {"paySourcesFilter":"","themeCode": "","yourParam1": "","yourParam2": ""}}
-                post_json["amount"]["value"] = amount_str
-                post_json["comment"] = comment+': '+str(nick_name)
-                post_json["expirationDateTime"] = str(end_datetime.isoformat())+'T12:00:00+03:00'
-                post_json["customer"]["account"] = str(nick_name)
-                respons = requests.put(url, headers=headers_API, json=post_json)
-                if respons.ok:
-                    respons_SQL = Check_Oreder(connection, api_secret_token,order_ID)
-                    if respons_SQL['successfully'] and respons_SQL['data'] == 'WAITING': 
-                        respons_Json = respons.json()
-                        url = str(respons_Json['payUrl'])
-                        print(url)
-                        respons_SQL = Add_URL(connection,url,order_ID)
-                        if respons_SQL['successfully']:
-                            return {'successfully':True, 'data':url}
-                        else:
-                            return {'successfully':False, 'data':''}
+            # Создание заказа в QIWI API
+            url = "https://api.qiwi.com/partner/bill/v1/bills/"+str(order_ID)
+            end_datetime = datetime.date.today() + datetime.timedelta(1)
+            # Заголовок
+            headers_API = CaseInsensitiveDict()
+            headers_API["content-type"] = "application/json"
+            headers_API["accept"] = "application/json"
+            headers_API["Authorization"] = "Bearer " + api_secret_token
+            # Данные
+            post_json = {"amount": {"currency": "RUB","value": ""},"comment": "","expirationDateTime": "","customer": {"phone": "","email": "","account": ""},"customFields" : {"paySourcesFilter":"","themeCode": "","yourParam1": "","yourParam2": ""}}
+            post_json["amount"]["value"] = amount_str
+            post_json["comment"] = comment+': '+str(nick_name)
+            post_json["expirationDateTime"] = str(end_datetime.isoformat())+'T12:00:00+03:00'
+            post_json["customer"]["account"] = str(nick_name)
+            respons = requests.put(url, headers=headers_API, json=post_json)
+            if respons.ok:
+                respons_SQL = Check_Oreder(connection, api_secret_token,order_ID)
+                if respons_SQL['successfully'] and respons_SQL['data'] == 'WAITING': 
+                    respons_Json = respons.json()
+                    url = str(respons_Json['payUrl'])
+                    print(url)
+                    respons_SQL = Add_URL(connection,url,order_ID)
+                    if respons_SQL['successfully']:
+                        return {'successfully':True, 'data':url}
                     else:
                         return {'successfully':False, 'data':''}
                 else:
                     return {'successfully':False, 'data':''}
             else:
-                return {'successfully':False, 'data':''}   
+                return {'successfully':False, 'data':''}
         else:
             return {'successfully':False, 'data':''}
     else:
@@ -228,8 +225,9 @@ def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_I
     count_PAID_orders = 0
     if respons_SQL['successfully'] and respons_SQL['data']:
         for rows in respons_SQL['data']:          
-            Check_Oreder(connection,api_secret_token,rows[0])
-            count_PAID_orders += 1
+            respons_API = Check_Oreder(connection,api_secret_token,rows[0])
+            if respons_API['successfully']:
+                count_PAID_orders += 1
     # Обновление статусов заказов ожидающих конвертацию в Тенге     
     query = "SELECT No,RU FROM orders WHERE NickName = '"+nickName+"' AND Status = 'PAID';"
     respons_SQL = execute_query(connection,query,'Отбор заказов на конвертацию '+nickName)
