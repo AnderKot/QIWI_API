@@ -58,10 +58,10 @@ def start(message):
 def NickNameMenu(message):
     if("Добавить акаунт Steam" == message.text):
         print("Запрос регестрации: "+str(message.chat.id))
-            Bot.send_message(message.chat.id, 'Пожалуйста введите свой логин в Steam\nОн расположен в окне Steam во вкладке с верху с права',reply_markup = Change_Nick_menu_markup)
-            login_tip_img = open('Logintip.png','rb')
-            Bot.send_photo(message.chat.id,login_tip_img)
-            Bot.register_next_step_handler(message,Add_Steam)
+        Bot.send_message(message.chat.id, 'Пожалуйста введите свой логин в Steam\nОн расположен в окне Steam во вкладке с верху с права',reply_markup = Change_Nick_menu_markup)
+        login_tip_img = open('Logintip.png','rb')
+        Bot.send_photo(message.chat.id,login_tip_img)
+        Bot.register_next_step_handler(message,Add_Steam)
         #nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
         #nick_name = nisk_respons_SQL['data'][0][0]
         #print('m'+nick_name)
@@ -200,18 +200,12 @@ def Add_Steam(message):
         respons_SQL = QIWI_API.Create_customer(Connection,message.chat.id,message.text)
         if respons_SQL['successfully']:
             QIWI_API.Set_default_Nick(Connection,message.text,message.chat.id)
-            Bot.send_message(message.chat.id, 'На ваш акаунт зарегестрирован ник: '+message.text+'Он выбран основным',reply_markup = Main_menu_markup)
+            Bot.send_message(message.chat.id, 'На ваш акаунт зарегестрирован ник: '+message.text+'\nОн выбран основным',reply_markup = Main_menu_markup)
             Bot.register_next_step_handler(message,main)
         else:
             Bot.send_message(message.chat.id, 'Ошибка при регестрации, повторите попытку или свяжитесь с подержкой!')
             Bot.register_next_step_handler(message,start)
 
-            
-# Получение сообщений от юзера
-# @Bot.message_handler(content_types=["text"])
-# def handle_text(message):
-#     print(str(message.chat.id))
-#     Bot.send_message(message.chat.id, 'Вы написали: ' + message.text)
 
 # Запускаем бота
 Connection = QIWI_API.Create_SQL_connection(QIWI_API.SQLHostName,QIWI_API.SQLUserName,QIWI_API.SQLRassword,QIWI_API.SQLBaseName)
