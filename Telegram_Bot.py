@@ -74,15 +74,13 @@ def NickNameMenu(message):
         respons_SQL = QIWI_API.Get_NickNames(Connection,message.chat.id)
         if respons_SQL['successfully']:
             Bot.send_message(message.chat.id, 'Список акаунтов Steam')
-            coutn_rows = 1
             for rows in respons_SQL['data']:
                 nick_name = rows[0]
-                if rows[1] == '1':
-                    logined = 'Текущий'
+                if rows[1] == 1:
+                    logined = '<- Текущий'
                 else:
                     logined = ''
-                Bot.send_message(message.chat.id, str(coutn_rows)+'. '+nick_name+' '+logined)
-                coutn_rows += 1
+                Bot.send_message(message.chat.id, str(nick_name+' '+logined))
             Bot.send_message(message.chat.id, 'Введите Steam акаунт на который хотите переключиться',reply_markup = Change_Nick_menu_markup)
             Bot.register_next_step_handler(message, ChangeNickName)
 
@@ -94,7 +92,6 @@ def NickNameMenu(message):
 def ChangeNickName(message):
     nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
     nick_name = nisk_respons_SQL['data'][0][0]
-    print('C'+nick_name)
     if("Назад" == message.text):
         Bot.send_message(message.chat.id, 'Ваш текущий ник: '+nick_name,reply_markup= Nick_Name_menu_markup)
         Bot.register_next_step_handler(message,NickNameMenu)
@@ -127,7 +124,7 @@ def main(message):
         if "Подтвердить статус оплаты" == message.text:
             respons_QIWI = QIWI_API.Find_paid_order(Connection, QIWI_API.Token, QIWI_API.SecretKey, nick_name, message.chat.id)
             if respons_QIWI['successfully'] and respons_QIWI['data']:
-                Bot.send_message(message.chat.id, 'Подтверждено\n'+respons_QIWI['data']['PAID']+' пополненией\n'+respons_QIWI['data']['COMPLETED']+' заказов отправлено на Steam',reply_markup= Main_menu_markup)
+                Bot.send_message(message.chat.id, 'Подтверждено полненией '+respons_QIWI['data']['PAID']+'\nЗаказов отправлено на Steam '+respons_QIWI['data']['COMPLETED'] ,reply_markup= Main_menu_markup)
                 Bot.register_next_step_handler(message,main)
             else:
                 Bot.send_message(message.chat.id, 'Оплат по ссылкам не найдено !/nЕсли вы производили оплату свяжитесь с подержкой!/nhttps://discordapp.com/users/Ander_kot#5764/',reply_markup= Main_menu_markup)
