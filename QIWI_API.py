@@ -66,8 +66,11 @@ def Convert(api_access_token,order_ID,amount):
     post_json['id'] = str(order_ID)
     post_json['sum']['amount'] = str(amount)
     respons = requests.post(url, headers=headers_API, json=post_json)
-    print(str(respons))
-    print(str(respons.text))
+    if respons.ok:
+        return {'successfully':True, 'data':''}
+    else:
+        return {'successfully':False, 'data':''}
+        
 
 # Последние n платежей --
 def payment_history_last(login, api_access_token, rows_num):
@@ -107,7 +110,7 @@ def execute_query(connection, query, tip='не определено'):
          
 # Создание клиента
 def Create_customer(connection,Tg_ID, nick_name):
-    create_query = "INSERT INTO customers VALUES ("+str(Tg_ID)+",'"+nick_name+"',NULL,NULL,1);"
+    create_query = "INSERT INTO customers VALUES ("+str(Tg_ID)+",'"+nick_name+"',0,0,1);"
     return execute_query(connection,create_query,'Создание клиента '+nick_name)
     
 # Проверка акаунта
@@ -206,28 +209,36 @@ def Check_Oreder(connection, api_secret_token, order_ID):
             {'successfully':False, 'data':''}
     return {'successfully':False, 'data':''}
 
-# Поиск оплаченых заказов
-def Find_paid_order(connection, api_access_token, api_secret_token,nickName):
+# Исполнение оплаченых заказов
+def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_ID):
+    # Обновление статусов заказов ожидающих оплату
     query = "SELECT No FROM orders WHERE NickName = '"+nickName+"' AND Status = 'WAITING';"
     respons_SQL = execute_query(connection,query,'Отбор заказов на подтверждение '+nickName)
     print(str(respons_SQL['data']))
     if respons_SQL['successfully'] and respons_SQL['data']:
         for rows in respons_SQL['data']:          
             Check_Oreder(connection,api_secret_token,rows[0])
-            
+    # Обновление статусов заказов ожидающих конвертацию в Тенге     
     query = "SELECT No,RU FROM orders WHERE NickName = '"+nickName+"' AND Status = 'PAID';"
-    respons_SQL = execute_query(connection,query,'Отбор заказов на пополнение '+nickName)
+    respons_SQL = execute_query(connection,query,'Отбор заказов на конвертацию '+nickName)
     if respons_SQL['successfully'] and respons_SQL['data']:
         for rows in respons_SQL['data']:
-            print(rows[0])
-            print(rows[1])
-            cross = Decemal(Get_Cross_Rates(api_access_token))
-            amount_RUB = Decemal(rows[1])
+            order_ID_str = rows[0]
+            cross = Decimal(Get_Cross_Rates(api_access_token))
+            amount_RUB = Decimal(rows[1])
             amount_KZT = amount_RUB/cross
             amount_KZT_str = str(round(amount_KZT,2))
-            print(amount_KZT_str)
-            respons_SQL = Convert(api_access_token,rows[1])
-        return {'successfully':True, 'data':''}
+            respons_API = Convert(api_access_token,order_ID_str,amount_KZT_str)
+            if respons_API['successfully']:
+                Set_crossed(connection,order_ID,nickName,amount_KZT_str,tg_ID)
+    # Обновление статусов заказов ожидающих исполнение
+    query = "SELECT No,KZ FROM orders WHERE NickName = '"+nickName+"' AND Status = 'CROSSED';"
+    respons_SQL = execute_query(connection,query,'Отбор заказов на конвертацию '+nickName)
+    if respons_SQL['successfully'] and respons_SQL['data']:
+        for rows in respons_SQL['data']:
+            order_ID = rows[0]
+            amount_KZT = round(Decimal(rows[1]),2)
+            Send_To_Steam(api_access_token,nickName,amount_KZT,order_ID)
     else:
         return {'successfully':False, 'data':''}
         
@@ -239,8 +250,8 @@ def Set_default_wallet(connection, login, api_access_token, wallet):
     headers_API["accept"] = "application/json"
     headers_API["Authorization"] = "Bearer " + api_access_token
     data_API = '{ "defaultAccount": true }'
-    respons = requests.patch(url, headers=headers_API, data=data_API)
-    if respons.ok:
+    respons_API = requests.patch(url, headers=headers_API, data=data_API)
+    if respons_API.ok:
         # SQL ---
         query = "UPDATE wallet SET Is_default = 0;"
         if execute_query(connection,query,'Обнуление статуса кошельков'):
@@ -260,20 +271,27 @@ def Add_URL(connection,order_URL,order_ID):
         return {'successfully':False, 'data':''}
 
 # Добавить KZT на акаунт и заказ, перевести заказ в "CROSSED"
-# def 
+def Set_crossed(connection,order_ID,nickName,amount_KZT,tg_ID):
+    order_ID_str = str(order_ID)
+    # query = "SELECT KZ FROM customers WHERE No = "+order_ID_str+";"
+    query = "UPDATE orders SET KZ = "+amount_KZT+",Status = 'CROSSED' WHERE No = "+order_ID_str+";"
+    respons_SQL = execute_query(connection,query,'Подтверждение перевода '+amount_KZT+' Тенге на '+order_ID_str)
+    query = "UPDATE customers SET KZ = KZ + "+amount_KZT+" WHERE NickName = '"+nickName+"' AND TgID = "+tg_ID+";"
+    respons_SQL = execute_query(connection,query,'Запись на счет '+nickName+' '+amount_KZT+' Тенге')
     
 # Перевод на стим 31212
-def Send_To_Steam(api_access_token):
+def Send_To_Steam(api_access_token,nickName,amount_KZT,order_ID):
+    amount_KZT_str = str(amount_KZT)
     url = "https://edge.qiwi.com/sinap/api/v2/terms/31212/payments"
     headers_API = CaseInsensitiveDict()
     headers_API["content-type"] = "application/json"
     headers_API["accept"] = "application/json"
     headers_API["Authorization"] = "Bearer " + api_access_token
     json_API = {"id":"","sum": {"amount":"","currency":"398"},"paymentMethod": {"type":"Account","accountId":"398"},"fields": {"account":""}}
-    json_API['id'] = '1'
-    json_API['sum']['amount'] = '100'
-    json_API['fields']['account'] = "ander_kot"
-    
+    json_API['id'] = str(order_ID)
+    json_API['sum']['amount'] = amount_KZT_str
+    json_API['fields']['account'] = nickName
+    print(str(json_API))
     respons = requests.post(url, headers=headers_API, json=json_API)
 
     print(str(respons))
@@ -281,14 +299,14 @@ def Send_To_Steam(api_access_token):
     
 # print(payment_history_last(Login,Token,10))
 Connection = Create_SQL_connection(SQLHostName,SQLUserName,SQLRassword,SQLBaseName)
-# Find_paid_order(Connection,Token,SecretKey,'ander_kot')
+# Find_paid_order(Connection,Token,SecretKey,'ander_kot','777411561')
 # print(get_balance(Login,Token))
 # Check_Oreder(Connection,SecretKey,9)
 # create_customer(Connection,'TEST01')
 # Set_default_wallet(Connection,Login,Token,'qw_wallet_kzt')
 # get_balance(Connection,Login,Token)
 #  print(str(Get_Cross_Rates(Token)))
-Convert(Token,80)
+#  Convert(Token,80)
 # print(str(Create_order(Connection,SecretKey,11,'Test','lj')))
-# Send_To_Steam(Token)
+Send_To_Steam(Token,'Ander_kot', round(Decimal(613.54),2),'29')
 # print(create_order(Connection,SecretKye,1,'Test paid','Ander_kot'))
