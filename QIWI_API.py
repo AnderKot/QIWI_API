@@ -25,7 +25,7 @@ def get_profile(api_access_token):
     return p.json()
 
 # Баланс QIWI Кошелька --
-def Get_balance(connection,login, api_access_token):
+def Get_balance(login, api_access_token):
     s = requests.Session()
     s.headers['Accept']= 'application/json'
     s.headers['authorization'] = 'Bearer ' + api_access_token  
@@ -33,9 +33,9 @@ def Get_balance(connection,login, api_access_token):
     if respons.ok:
         respons_Json = respons.json()
         query = "UPDATE wallet SET Amount = "+str(respons_Json['accounts'][0]['balance']['amount'])+" WHERE Name = 'qw_wallet_rub';"
-        if execute_query(connection,query,'Баланс РУБ '+str(respons_Json['accounts'][0]['balance']['amount'])):
+        if execute_query(query,'Баланс РУБ '+str(respons_Json['accounts'][0]['balance']['amount'])):
             query = "UPDATE wallet SET Amount = "+str(respons_Json['accounts'][1]['balance']['amount'])+" WHERE Name = 'qw_wallet_kzt';"
-            if execute_query(connection,query,'Баланс КЗТ '+str(respons_Json['accounts'][1]['balance']['amount'])):
+            if execute_query(query,'Баланс КЗТ '+str(respons_Json['accounts'][1]['balance']['amount'])):
                 return True
     return False
 
@@ -90,13 +90,13 @@ def Create_SQL_connection(host_name, user_name, user_password, db_name):
             passwd=user_password,
             database=db_name    
         )
-        print("MySQL подключен")
     except Error as e:
         print(f"Ошибка подключения к MySQL '{e}'")
     return connection
 
 # Отправка запроса SQL
-def execute_query(connection, query, tip='не определено'):
+def execute_query(query, tip='не определено'):
+    connection = Create_SQL_connection(SQLHostName,SQLUserName,SQLRassword,SQLBaseName)
     cursor = connection.cursor()
     try:
         cursor.execute(query)
@@ -109,24 +109,28 @@ def execute_query(connection, query, tip='не определено'):
         return {'successfully':False, 'data':''}
          
 # Создание клиента
-def Create_customer(connection,Tg_ID, nick_name):
+def Create_customer(Tg_ID, nick_name):
     create_query = "INSERT INTO customers VALUES ("+str(Tg_ID)+",'"+nick_name+"',0,0,1);"
-    return execute_query(connection,create_query,'Создание клиента '+nick_name)
+    respons_SQL = execute_query(create_query,'Создание клиента '+nick_name)
+    return respons_SQL
     
 # Проверка акаунта
-def Check_Customer(connection,tg_ID):
+def Check_Customer(tg_ID):
     create_query = "SELECT NickName,RU,KZ FROM customers WHERE TgID = "+str(tg_ID)+" AND Logined = 1;"
-    return execute_query(connection,create_query,'данные клиента '+str(tg_ID))
+    respons_SQL = execute_query(create_query,'данные клиента '+str(tg_ID))
+    return respons_SQL
 
 # Отключение акаунта
-def Off_Customer(connection,tg_ID,nick_Name):
+def Off_Customer(tg_ID,nick_Name):
+    connection = Create_SQL_connection(SQLHostName,SQLUserName,SQLRassword,SQLBaseName)
     create_query = "UPDATE customers SET Logined = 0  WHERE TgID = "+str(tg_ID)+" AND NickName = '"+nick_Name+"';"
-    return execute_query(connection,create_query,'Отказ от ника '+nick_Name+': '+str(tg_ID))
+    return execute_query(create_query,'Отказ от ника '+nick_Name+': '+str(tg_ID))
+    
     
 # Коммиссия
-def Get_Commission(connection):
+def Get_Commission():
     create_query = "SELECT commission FROM config;"
-    respons_SQL = execute_query(connection,create_query,'коммиссию')
+    respons_SQL = execute_query(create_query,'коммиссию')
     if respons_SQL['successfully'] and respons_SQL['data']: 
         сommission = respons_SQL['data'][0][0]
         return {'successfully':True, 'data':сommission}
@@ -134,12 +138,12 @@ def Get_Commission(connection):
         return {'successfully':False, 'data':''}
  
 # Создание заказа
-def Create_order(connection, api_secret_token, amount, comment, nick_name):
+def Create_order(api_secret_token, amount, comment, nick_name):
     datetime_str = str(datetime.datetime.today().replace(microsecond=0).isoformat())
     print(datetime_str)
     print(api_secret_token)
     # Запрос коммиссии
-    respons_SQL = Get_Commission(connection)
+    respons_SQL = Get_Commission()
     if respons_SQL['successfully'] and respons_SQL['data']:
         commission = respons_SQL['data']
         amount_decimal = Decimal(amount)
@@ -147,10 +151,10 @@ def Create_order(connection, api_secret_token, amount, comment, nick_name):
         amount_str = str(round(amount_decimal*commission_decimal,2))
         # Создание заказа в QSL
         query = "SELECT MAX(No) FROM orders;"
-        respons_SQL = execute_query(connection,query,'Сбор ID заказа')
+        respons_SQL = execute_query(query,'Сбор ID заказа')
         order_ID = respons_SQL['data'][0][0]+5
         query = "INSERT INTO orders(No,NickName,RU,CreateDateTime) VALUES ("+str(order_ID)+",'"+nick_name+"',"+amount_str+",'"+datetime_str+"');"
-        respons_SQL = execute_query(connection,query,'Создание pаказа для '+nick_name)
+        respons_SQL = execute_query(query,'Создание pаказа для '+nick_name)
         if respons_SQL['successfully']:
             # Создание заказа в QIWI API
             url = "https://api.qiwi.com/partner/bill/v1/bills/"+str(order_ID)
@@ -168,12 +172,12 @@ def Create_order(connection, api_secret_token, amount, comment, nick_name):
             post_json["customer"]["account"] = str(nick_name)
             respons = requests.put(url, headers=headers_API, json=post_json)
             if respons.ok:
-                respons_SQL = Check_Oreder(connection, api_secret_token,order_ID)
+                respons_SQL = Check_Oreder(api_secret_token,order_ID)
                 if respons_SQL['successfully'] and respons_SQL['data'] == 'WAITING': 
                     respons_Json = respons.json()
                     url = str(respons_Json['payUrl'])
                     print(url)
-                    respons_SQL = Add_URL(connection,url,order_ID)
+                    respons_SQL = Add_URL(url,order_ID)
                     if respons_SQL['successfully']:
                         return {'successfully':True, 'data':url}
                     else:
@@ -188,7 +192,7 @@ def Create_order(connection, api_secret_token, amount, comment, nick_name):
         return {'successfully':False, 'data':''}
 
 # Обновление статуса заказа
-def Check_Oreder(connection, api_secret_token, order_ID):
+def Check_Oreder(api_secret_token, order_ID):
     # API ---
     url = "https://api.qiwi.com/partner/bill/v1/bills/"+str(order_ID)
     headers_API = CaseInsensitiveDict()
@@ -201,36 +205,36 @@ def Check_Oreder(connection, api_secret_token, order_ID):
         status = str(respons_Json['status']['value'])
         # SQL ---
         query = "UPDATE orders SET Status = '"+status+"' WHERE No = '"+str(order_ID)+"';"
-        if execute_query(connection,query,'Обновление pаказа '+status+'|'+str(order_ID)):
+        if execute_query(query,'Обновление pаказа '+status+'|'+str(order_ID)):
             return {'successfully':True, 'data':status}
         else:
-            {'successfully':False, 'data':''}
+            return {'successfully':False, 'data':''}
     return {'successfully':False, 'data':''}
 
 # Список ников на акаунте
-def Get_NickNames(connection,tg_ID):
+def Get_NickNames(tg_ID):
     tg_ID_str = str(tg_ID)
     query = "SELECT NickName,Logined FROM customers WHERE TgID = "+tg_ID_str+";"
-    respons_SQL = execute_query(connection,query,'список ников '+tg_ID_str)
+    respons_SQL = execute_query(query,'список ников '+tg_ID_str)
     if respons_SQL['successfully'] and respons_SQL['data']:
         return {'successfully':True, 'data':respons_SQL['data']}
     else:
         return {'successfully':False, 'data':''}
 
 # Исполнение оплаченых заказов
-def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_ID):
+def Find_paid_order( api_access_token, api_secret_token,nickName,tg_ID):
     # Обновление статусов заказов ожидающих оплату
     query = "SELECT No FROM orders WHERE NickName = '"+nickName+"' AND Status = 'WAITING';"
-    respons_SQL = execute_query(connection,query,'Отбор заказов на подтверждение '+nickName)
+    respons_SQL = execute_query(query,'Отбор заказов на подтверждение '+nickName)
     count_PAID_orders = 0
     if respons_SQL['successfully'] and respons_SQL['data']:
         for rows in respons_SQL['data']:          
-            respons_API = Check_Oreder(connection,api_secret_token,rows[0])
+            respons_API = Check_Oreder(api_secret_token,rows[0])
             if respons_API['successfully'] and (respons_API['data'] == 'PAID'):
                 count_PAID_orders += 1
     # Обновление статусов заказов ожидающих конвертацию в Тенге     
     query = "SELECT No,RU FROM orders WHERE NickName = '"+nickName+"' AND Status = 'PAID';"
-    respons_SQL = execute_query(connection,query,'Отбор заказов на конвертацию '+nickName)
+    respons_SQL = execute_query(query,'Отбор заказов на конвертацию '+nickName)
     count_CROSSED_orders = 0
     if respons_SQL['successfully'] and respons_SQL['data']:
         for rows in respons_SQL['data']:
@@ -245,12 +249,11 @@ def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_I
             respons_API = Convert(api_access_token,order_API_str,amount_KZT_str)
             print(str(respons_API['data']))
             if respons_API['successfully']:
-                Set_crossed(connection,order_ID_str,nickName,amount_KZT_str,tg_ID)
+                Set_crossed(order_ID_str,nickName,amount_KZT_str,tg_ID)
                 count_CROSSED_orders += 1
     # Обновление статусов заказов ожидающих исполнение
     query = "SELECT No,KZ FROM orders WHERE NickName = '"+nickName+"' AND Status = 'CROSSED';"
-    print(query)
-    respons_SQL = execute_query(connection,query,'Отбор заказов на исполнение '+nickName)
+    respons_SQL = execute_query(query,'Отбор заказов на исполнение '+nickName)
     count_COMPLETED_orders = 0
     if respons_SQL['successfully'] and respons_SQL['data']:
         for rows in respons_SQL['data']:
@@ -264,16 +267,15 @@ def Find_paid_order(connection, api_access_token, api_secret_token,nickName,tg_I
             amount_KZT_str = str(amount_KZT)
             respons_API = Send_To_Steam(api_access_token,nickName,amount_KZT,order_Paid_ID_str)
             if respons_API['successfully']:
-                Set_comleted(connection,order_ID_str,nickName,amount_KZT_str,tg_ID)
+                Set_comleted(order_ID_str,nickName,amount_KZT_str,tg_ID)
                 count_COMPLETED_orders += 1
-    
     if (count_PAID_orders + count_CROSSED_orders + count_COMPLETED_orders) > 0:
         return {'successfully':True, 'data':{"PAID":str(count_PAID_orders),"CROSSED":str(count_CROSSED_orders),"COMPLETED":str(count_COMPLETED_orders)}}
     else:
         return {'successfully':False, 'data':''}
         
 # Установка баланса по умолчанию
-def Set_default_wallet(connection, login, api_access_token, wallet):
+def Set_default_wallet(login, api_access_token, wallet):
     url = "https://edge.qiwi.com/funding-sources/v2/persons/"+login+"/accounts/"+wallet
     headers_API = CaseInsensitiveDict()
     headers_API["content-type"] = "application/json"
@@ -284,45 +286,45 @@ def Set_default_wallet(connection, login, api_access_token, wallet):
     if respons_API.ok:
         # SQL ---
         query = "UPDATE wallet SET Is_default = 0;"
-        if execute_query(connection,query,'Обнуление статуса кошельков'):
+        if execute_query(query,'Обнуление статуса кошельков'):
             query = "UPDATE wallet SET Is_default = 1 WHERE Name = '"+wallet+"';"
-            if execute_query(connection,query,'Установка стандартного кошелька: '+wallet):
+            if execute_query(query,'Установка стандартного кошелька: '+wallet):
                 return {'successfully':True, 'data':''}
     return {'successfully':False, 'data':''}
 
 # Установка Steam акаунта по умолчанию
-def Set_default_Nick(connection,nickName,tg_ID ):
+def Set_default_Nick(nickName,tg_ID ):
     tg_ID_str = str(tg_ID)
     query = "UPDATE customers SET Logined = 0 WHERE TgID = '"+tg_ID_str+"';"
-    if execute_query(connection,query,'Выключение Steam акаунтов '+tg_ID_str):
+    if execute_query(query,'Выключение Steam акаунтов '+tg_ID_str):
         query = "UPDATE customers SET Logined = 1 WHERE TgID = '"+tg_ID_str+"' AND NickName = '"+nickName+"';"
-        if execute_query(connection,query,'Включение Steam акаунта '+nickName+' клиенту ' +tg_ID_str):
+        if execute_query(query,'Включение Steam акаунта '+nickName+' клиенту ' +tg_ID_str):
             return {'successfully':True, 'data':''}
     return {'successfully':False, 'data':''}
 
 # Добавить Url к заказу
-def Add_URL(connection,order_URL,order_ID):
+def Add_URL(order_URL,order_ID):
     order_ID_str = str(order_ID)
     query = "UPDATE orders SET Url = '"+order_URL+"' WHERE No = "+order_ID_str+";"
-    respons_SQL = execute_query(connection,query,'Установка URL заказу '+str(order_ID)+': '+str(order_URL))
+    respons_SQL = execute_query(query,'Установка URL заказу '+str(order_ID)+': '+str(order_URL))
     if respons_SQL['successfully']:
         return {'successfully':True, 'data':''}
     else:
         return {'successfully':False, 'data':''}
 
 # Добавить KZT на акаунт и заказ, перевести заказ в "CROSSED"
-def Set_crossed(connection,order_ID,nickName,amount_KZT,tg_ID):
+def Set_crossed(order_ID,nickName,amount_KZT,tg_ID):
     amount_KZT_str = str(amount_KZT) 
     tg_ID_str = str(tg_ID)
     order_ID_str = str(order_ID)
     # query = "SELECT KZ FROM customers WHERE No = "+order_ID_str+";"
     query = "UPDATE orders SET KZ = "+amount_KZT_str+",Status = 'CROSSED' WHERE No = "+order_ID_str+";"
-    respons_SQL = execute_query(connection,query,'Подтверждение перевода '+amount_KZT_str+' Тенге на '+order_ID_str)
+    respons_SQL = execute_query(query,'Подтверждение перевода '+amount_KZT_str+' Тенге на '+order_ID_str)
     query = "UPDATE customers SET KZ = KZ + "+amount_KZT_str+" WHERE NickName = '"+nickName+"' AND TgID = "+tg_ID_str+";"
-    respons_SQL = execute_query(connection,query,'Запись на счет '+nickName+' '+amount_KZT_str+' Тенге')
+    respons_SQL = execute_query(query,'Запись на счет '+nickName+' '+amount_KZT_str+' Тенге')
 
 # Убрать KZT с акаунта, перевести заказ в "COMPLETED"
-def Set_comleted(connection,order_ID,nickName,amount_KZT,tg_ID):
+def Set_comleted(order_ID,nickName,amount_KZT,tg_ID):
     amount_KZT_str = str(amount_KZT)
     print('1'+amount_KZT_str) 
     tg_ID_str = str(tg_ID)
@@ -332,9 +334,9 @@ def Set_comleted(connection,order_ID,nickName,amount_KZT,tg_ID):
     order_ID_str = str(order_ID)
     print('4'+order_ID_str)
     query = "UPDATE customers SET KZ = KZ - "+amount_KZT_str+" WHERE NickName = '"+nickName+"' AND TgID = "+tg_ID_str+";"
-    respons_SQL = execute_query(connection,query,'списывание со счета '+nickName+' '+amount_KZT_str+' Тенге')
+    respons_SQL = execute_query(query,'списывание со счета '+nickName+' '+amount_KZT_str+' Тенге')
     query = "UPDATE orders SET PiadDateTime = '"+datetime_str+"', Status = 'COMPLETED' WHERE No = "+order_ID_str+";"
-    respons_SQL = execute_query(connection,query,'Завершение заказа')
+    respons_SQL = execute_query(query,'Завершение заказа')
 
 # Перевод на стим 31212
 def Send_To_Steam(api_access_token,nickName,amount_KZT,order_ID):
@@ -356,7 +358,7 @@ def Send_To_Steam(api_access_token,nickName,amount_KZT,order_ID):
         return {'successfully':False, 'data':respons.text}
     
 # print(payment_history_last(Login,Token,10))
-# Connection = Create_SQL_connection(SQLHostName,SQLUserName,SQLRassword,SQLBaseName)
+
 
 # Set_comleted(Connection,'31','Ander_kot','100','777411561')
 # Find_paid_order(Connection,Token,SecretKey,'Логинмой','187401430')

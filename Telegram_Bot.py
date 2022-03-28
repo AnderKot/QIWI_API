@@ -39,7 +39,7 @@ def start(message, res=False):
 @Bot.message_handler(content_types=['text'])
 def start(message):
     if "Регистрация" == message.text:
-        respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
+        respons_SQL = QIWI_API.Check_Customer(message.chat.id)
         if respons_SQL['successfully'] and respons_SQL['data']:
             nick_name = respons_SQL['data'][0][0]
             print('Клиент найден: '+nick_name)
@@ -62,16 +62,9 @@ def NickNameMenu(message):
         login_tip_img = open('Logintip.png','rb')
         Bot.send_photo(message.chat.id,login_tip_img)
         Bot.register_next_step_handler(message,Add_Steam)
-        #nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
-        #nick_name = nisk_respons_SQL['data'][0][0]
-        #print('m'+nick_name)
-        #respons_SQL = QIWI_API.Off_Customer(Connection,message.chat.id,nick_name)
-        #if respons_SQL['successfully']:
-        #    Bot.send_message(message.chat.id, 'Ваш ник отвязан\nВы можете зарегестрироваться под новым', reply_markup= Regestration_markup)
-        #    Bot.register_next_step_handler(message,start)
 
     if("Сменить Steam акаунт" == message.text):
-        respons_SQL = QIWI_API.Get_NickNames(Connection,message.chat.id)
+        respons_SQL = QIWI_API.Get_NickNames(message.chat.id)
         if respons_SQL['successfully']:
             Bot.send_message(message.chat.id, 'Список акаунтов Steam')
             for rows in respons_SQL['data']:
@@ -90,19 +83,19 @@ def NickNameMenu(message):
         Bot.register_next_step_handler(message,main)
 
 def ChangeNickName(message):
-    nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
+    nisk_respons_SQL = QIWI_API.Check_Customer(message.chat.id)
     nick_name = nisk_respons_SQL['data'][0][0]
     if("Назад" == message.text):
         Bot.send_message(message.chat.id, 'Ваш текущий ник: '+nick_name,reply_markup= Nick_Name_menu_markup)
         Bot.register_next_step_handler(message,NickNameMenu)
     else:
         finded = False;
-        respons_SQL = QIWI_API.Get_NickNames(Connection,message.chat.id)
+        respons_SQL = QIWI_API.Get_NickNames(message.chat.id)
         for rows in respons_SQL['data']:
                 nick_name = rows[0]
                 if nick_name == message.text:
                     finded = True
-                    respons_SQL = QIWI_API.Set_default_Nick(Connection,nick_name,message.chat.id)
+                    respons_SQL = QIWI_API.Set_default_Nick(nick_name,message.chat.id)
                     if respons_SQL['successfully']:
                        Bot.send_message(message.chat.id, 'Выпереключены на Steam '+nick_name,reply_markup= Nick_Name_menu_markup) 
                        Bot.register_next_step_handler(message, NickNameMenu)
@@ -113,7 +106,7 @@ def ChangeNickName(message):
 
 
 def main(message):
-    nisk_respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
+    nisk_respons_SQL = QIWI_API.Check_Customer(message.chat.id)
     if nisk_respons_SQL['successfully'] and nisk_respons_SQL['data']:
         nick_name = nisk_respons_SQL['data'][0][0]
         print(nick_name)
@@ -122,7 +115,7 @@ def main(message):
             Bot.register_next_step_handler(message,createpayment)
             
         if "Подтвердить статус оплаты" == message.text:
-            respons_QIWI = QIWI_API.Find_paid_order(Connection, QIWI_API.Token, QIWI_API.SecretKey, nick_name, message.chat.id)
+            respons_QIWI = QIWI_API.Find_paid_order( QIWI_API.Token, QIWI_API.SecretKey, nick_name, message.chat.id)
             if respons_QIWI['successfully'] and respons_QIWI['data']:
                 Bot.send_message(message.chat.id, 'Подтверждено полненией '+respons_QIWI['data']['PAID']+'\nЗаказов отправлено на Steam '+respons_QIWI['data']['COMPLETED'] ,reply_markup= Main_menu_markup)
                 Bot.register_next_step_handler(message,main)
@@ -147,10 +140,10 @@ def createpayment(message):
             amount_Dec = round(Decimal(message.text),2)
             if amount_Dec >= round(Decimal('20'),2):
                 Bot.send_message(message.chat.id, 'Создание ссылки для оплаты')
-                respons_SQL = QIWI_API.Check_Customer(Connection,message.chat.id)
+                respons_SQL = QIWI_API.Check_Customer(message.chat.id)
                 if respons_SQL['successfully'] and respons_SQL['data']:
                     nick_name = respons_SQL['data'][0][0]
-                    respons_SQL = QIWI_API.Create_order(Connection, QIWI_API.SecretKey,message.text,'Account replenishment',nick_name)
+                    respons_SQL = QIWI_API.Create_order( QIWI_API.SecretKey,message.text,'Account replenishment',nick_name)
                     if respons_SQL['successfully'] and respons_SQL['data']:
                         order_URL = respons_SQL['data']
                         Bot.send_message(message.chat.id, 'После оплаты нажмите на "Подтвердить статус оплаты"\nВаша ссылка для оплаты:\n'+order_URL,reply_markup= Main_menu_markup)
@@ -179,7 +172,7 @@ def end(message):
     Bot.register_next_step_handler(message,end)
 
 def registration(message):
-    respons_SQL = QIWI_API.Create_customer(Connection,message.chat.id,message.text)
+    respons_SQL = QIWI_API.Create_customer(message.chat.id,message.text)
     if respons_SQL['successfully']:
         Bot.send_message(message.chat.id, 'На ваш акаунт зарегестрирован ник: '+message.text+'\nДля начала попробуйте произвести минимальный платеж',reply_markup = Main_menu_markup)
         Bot.register_next_step_handler(message,main)
@@ -192,9 +185,9 @@ def Add_Steam(message):
         Bot.send_message(message.chat.id, 'Выберите действие',reply_markup= Nick_Name_menu_markup)
         Bot.register_next_step_handler(message,NickNameMenu)
     else:
-        respons_SQL = QIWI_API.Create_customer(Connection,message.chat.id,message.text)
+        respons_SQL = QIWI_API.Create_customer(message.chat.id,message.text)
         if respons_SQL['successfully']:
-            QIWI_API.Set_default_Nick(Connection,message.text,message.chat.id)
+            QIWI_API.Set_default_Nick(message.text,message.chat.id)
             Bot.send_message(message.chat.id, 'На ваш акаунт зарегестрирован ник: '+message.text+'\nОн выбран основным',reply_markup = Main_menu_markup)
             Bot.register_next_step_handler(message,main)
         else:
@@ -203,7 +196,6 @@ def Add_Steam(message):
 
 
 # Запускаем бота
-Connection = QIWI_API.Create_SQL_connection(QIWI_API.SQLHostName,QIWI_API.SQLUserName,QIWI_API.SQLRassword,QIWI_API.SQLBaseName)
 print("Старт:\n"+str(Bot.get_me()))
 Bot.polling(none_stop=True, interval=0)
 print("Is Stop")
