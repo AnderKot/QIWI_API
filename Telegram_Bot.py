@@ -7,7 +7,7 @@ from decimal import Decimal
 Bot = telebot.TeleBot('5293129292:AAFLb6IJl8XThYWUH4DpFrn7bZ4En-Noy_8')
 LoginMode = False
 Regestration_markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
-Regestration_markup.add(types.KeyboardButton("Регистрация"))
+Regestration_markup.add(types.KeyboardButton("Вход"))
 
 Delete_markup = types.ReplyKeyboardRemove()
 
@@ -31,19 +31,17 @@ Change_Nick_menu_markup.add(types.KeyboardButton("Назад"))
 @Bot.message_handler(commands=["start"])
 def start(message, res=False):
     print(str(message.chat.id))
-    markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
-    markup.add(types.KeyboardButton("Регистрация"))
     Bot.send_message(message.chat.id, 'Добро пожаловать!\nДля начала пройдите регистрацию', reply_markup= Regestration_markup)
 
 # Функция, обработка сообщений
 @Bot.message_handler(content_types=['text'])
 def start(message):
-    if "Регистрация" == message.text:
+    if "Вход" == message.text:
         respons_SQL = QIWI_API.Check_Customer(message.chat.id)
         if respons_SQL['successfully'] and respons_SQL['data']:
             nick_name = respons_SQL['data'][0][0]
             print('Клиент найден: '+nick_name)
-            Bot.send_message(message.chat.id, 'Мы нашли ваш ник: '+nick_name+'\nОн будет использован по умолчанию',reply_markup= Main_menu_markup)
+            Bot.send_message(message.chat.id, 'Ваш текущий ник: '+nick_name+'\nОн будет использован по умолчанию',reply_markup= Main_menu_markup)
             Bot.register_next_step_handler(message,main)
         else:
             print("Запрос регестрации: "+str(message.chat.id))
@@ -53,7 +51,7 @@ def start(message):
             Bot.register_next_step_handler(message,registration)
             
     else:
-        Bot.send_message(message.chat.id, 'Бип ? Буп !\nБот перезагружен', reply_markup= Regestration_markup)
+        Bot.send_message(message.chat.id, 'Бип ? Буп !\nБот перезагружен в связи с обновлением', reply_markup= Regestration_markup)
 
 def NickNameMenu(message):
     if("Добавить акаунт Steam" == message.text):
@@ -117,7 +115,7 @@ def main(message):
         if "Подтвердить статус оплаты" == message.text:
             respons_QIWI = QIWI_API.Find_paid_order( QIWI_API.Token, QIWI_API.SecretKey, nick_name, message.chat.id)
             if respons_QIWI['successfully'] and respons_QIWI['data']:
-                Bot.send_message(message.chat.id, 'Подтверждено полненией '+respons_QIWI['data']['PAID']+'\nЗаказов отправлено на Steam '+respons_QIWI['data']['COMPLETED'] ,reply_markup= Main_menu_markup)
+                Bot.send_message(message.chat.id, 'Подтверждено пополнений '+respons_QIWI['data']['PAID']+'\nЗаказов отправлено на Steam '+respons_QIWI['data']['COMPLETED']+'\nБудем рады если вы оставите отзыв от том какая сумма пришла на Steam\nЭто поможет нам улучшить сервис\nhttps://t.me/ander_kot_1',reply_markup= Main_menu_markup)
                 Bot.register_next_step_handler(message,main)
             else:
                 Bot.send_message(message.chat.id, 'Оплат по ссылкам не найдено !\nЕсли вы производили оплату свяжитесь с подержкой!\nhttps://t.me/ander_kot_1',reply_markup= Main_menu_markup)
