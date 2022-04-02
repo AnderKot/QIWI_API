@@ -110,7 +110,7 @@ def execute_query(query, tip='не определено'):
          
 # Создание клиента
 def Create_customer(Tg_ID, nick_name):
-    create_query = "INSERT INTO customers VALUES ("+str(Tg_ID)+",'"+nick_name+"',0,0,1);"
+    create_query = "INSERT INTO customers VALUES ("+str(Tg_ID)+",'"+nick_name+"',0,0,1,1);"
     respons_SQL = execute_query(create_query,'Создание клиента '+nick_name)
     return respons_SQL
     
