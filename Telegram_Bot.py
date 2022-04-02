@@ -1,5 +1,6 @@
 import QIWI_API
 import telebot
+import time
 from telebot import types
 from decimal import Decimal
 
@@ -17,7 +18,7 @@ Main_menu_markup.add(types.KeyboardButton("Подтвердить статус �
 Main_menu_markup.add(types.KeyboardButton("Менеджер акаунтов"))
 
 Nick_Name_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
-Nick_Name_menu_markup.add(types.KeyboardButton("Добавить акаунт Steam"))
+Nick_Name_menu_markup.add(types.KeyboardButton("Добавить новый акаунт Steam"))
 Nick_Name_menu_markup.add(types.KeyboardButton("Сменить Steam акаунт"))
 Nick_Name_menu_markup.add(types.KeyboardButton("Назад"))
 
@@ -54,7 +55,7 @@ def start(message):
         Bot.send_message(message.chat.id, 'Бип ? Буп !\nБот перезагружен в связи с обновлением', reply_markup= Regestration_markup)
 
 def NickNameMenu(message):
-    if("Добавить акаунт Steam" == message.text):
+    if("Добавить новый акаунт Steam" == message.text):
         print("Запрос регестрации: "+str(message.chat.id))
         Bot.send_message(message.chat.id, 'Пожалуйста введите свой логин в Steam\nОн расположен в окне Steam во вкладке с верху с права',reply_markup = Change_Nick_menu_markup)
         login_tip_img = open('Logintip.png','rb')
@@ -195,5 +196,13 @@ def Add_Steam(message):
 
 # Запускаем бота
 print("Старт:\n"+str(Bot.get_me()))
-Bot.polling(none_stop=True, interval=0)
+while True:
+    try:
+        Bot.polling(none_stop=True, interval=0)
+
+    except Exception as e:
+          # или просто print(e) если у вас логгера нет,
+        # или import traceback; traceback.print_exc() для печати полной инфы
+        time.sleep(500)
+
 print("Is Stop")
