@@ -376,3 +376,4 @@ def Send_To_Steam(api_access_token,nickName,amount_KZT,order_ID):
 # print(respons_API['data'])
 # query = "UPDATE orders SET Status = 'CROSSED' WHERE No = 32;"
 # respons_SQL = execute_query(Connection,query,'Запись на счет Тенге')
+# print(Get_Commission['data'])
