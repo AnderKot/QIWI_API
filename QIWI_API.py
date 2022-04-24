@@ -50,7 +50,7 @@ def Get_Cross_Rates(api_access_token):
     headers_API["Authorization"] = "Bearer " + api_access_token
     respons = requests.get(url, headers=headers_API)
     respons_Json = respons.json()
-    cross = str(respons_Json['result'][6]['rate'])
+    cross = str(respons_Json['result'][15]['rate'])
     return cross
 
 # Конвертация валют
@@ -367,13 +367,14 @@ def Send_To_Steam(api_access_token,nickName,amount_KZT,order_ID):
 # create_customer(Connection,'TEST01')
 # Set_default_wallet(Connection,Login,Token,'qw_wallet_kzt')
 # get_balance(Connection,Login,Token)
-#  print(str(Get_Cross_Rates(Token)))
+# print(str(Get_Cross_Rates(Token)))
 #  Convert(Token,80)
 # print(str(Create_order(Connection,SecretKey,11,'Test','lj')))
 # Send_To_Steam(Token,'Ander_kot', 613.54,'40')
 # print(create_order(Connection,SecretKye,1,'Test paid','Ander_kot'))
 # respons_API = Send_To_Steam(Token,'Логинмой','256.79','32')
-# print(respons_API['data'])
+
 # query = "UPDATE orders SET Status = 'CROSSED' WHERE No = 32;"
 # respons_SQL = execute_query(Connection,query,'Запись на счет Тенге')
-# print(Get_Commission['data'])
+#respons_API = Get_Commission()
+#print(respons_API['data'])
