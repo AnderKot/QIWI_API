@@ -244,7 +244,7 @@ def Find_paid_order( api_access_token, api_secret_token,nickName,tg_ID):
             print(order_API_str)
             cross = Decimal(Get_Cross_Rates(api_access_token))
             amount_RUB = Decimal(rows[1])
-            amount_KZT = amount_RUB/cross
+            amount_KZT = (amount_RUB-1)/cross
             amount_KZT_str = str(round(amount_KZT,2))
             respons_API = Convert(api_access_token,order_API_str,amount_KZT_str)
             print(str(respons_API['data']))

@@ -52,7 +52,7 @@ def start(message):
             Bot.register_next_step_handler(message,registration)
             
     else:
-        Bot.send_message(message.chat.id, 'Бип ? Буп !\nБот перезагружен в связи с обновлением', reply_markup= Regestration_markup)
+        Bot.send_message(message.chat.id, 'Бип ? Буп !\nБот перезагружен', reply_markup= Regestration_markup)
 
 def NickNameMenu(message):
     if("Добавить новый акаунт Steam" == message.text):
@@ -110,7 +110,7 @@ def main(message):
         nick_name = nisk_respons_SQL['data'][0][0]
         print(nick_name)
         if "Создать ссылку на пополнение Steam" == message.text:               
-            Bot.send_message(message.chat.id, 'Введите сумму на котору пополнить акаунт\n'+nick_name+'\nМинимум 20р',reply_markup = Order_menu_markup)
+            Bot.send_message(message.chat.id, 'Введите сумму на котору пополнить акаунт\n'+nick_name+'\nМинимум 85 (требование QIWI)',reply_markup = Order_menu_markup)
             Bot.register_next_step_handler(message,createpayment)
             
         if "Подтвердить статус оплаты" == message.text:
@@ -137,7 +137,7 @@ def createpayment(message):
     else:   
         if message.text.isdigit():
             amount_Dec = round(Decimal(message.text),2)
-            if amount_Dec >= round(Decimal('20'),2):
+            if amount_Dec >= round(Decimal('85'),2):
                 Bot.send_message(message.chat.id, 'Создание ссылки для оплаты')
                 respons_SQL = QIWI_API.Check_Customer(message.chat.id)
                 if respons_SQL['successfully'] and respons_SQL['data']:
@@ -156,7 +156,7 @@ def createpayment(message):
                     Bot.send_message(message.chat.id, 'Ошибка!\nВаш ник не найден\nПовторите попытку или свяжитесь с подержкой!\nhttps://t.me/ander_kot_1',reply_markup = Main_menu_markup)
                     Bot.register_next_step_handler(message,main)
             else:
-                Bot.send_message(message.chat.id, 'Платеж должен составлять минимум 20',reply_markup = Order_menu_markup)
+                Bot.send_message(message.chat.id, 'Платеж должен составлять минимум 85 (требование QIWI)',reply_markup = Order_menu_markup)
                 Bot.register_next_step_handler(message,createpayment)
         else:
             Bot.send_message(message.chat.id, 'Используйте только цифры',reply_markup = Order_menu_markup)
