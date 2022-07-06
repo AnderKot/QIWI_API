@@ -201,8 +201,9 @@ while True:
         Bot.polling(none_stop=True, interval=0)
 
     except Exception as e:
+        time.sleep(500)
           # или просто print(e) если у вас логгера нет,
         # или import traceback; traceback.print_exc() для печати полной инфы
-        time.sleep(500)
+       
 
 print("Is Stop")
