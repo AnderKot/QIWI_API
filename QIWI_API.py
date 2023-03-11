@@ -7,14 +7,14 @@ from mysql.connector import Error
 from decimal import Decimal
 from requests.structures import CaseInsensitiveDict
 
-Token = 'e4460425fb33c497219a74b6a4318d38'
-Login = '79885028775'
-SecretKey = 'eyJ2ZXJzaW9uIjoiUDJQIiwiZGF0YSI6eyJwYXlpbl9tZXJjaGFudF9zaXRlX3VpZCI6IjY2MnI2eC0wMCIsInVzZXJfaWQiOiI3OTg4NTAyODc3NSIsInNlY3JldCI6ImU4MDNlNGYyZmQ5ZmJjMzJhNTQxYjY5YjVlNjg2YTM0NTllMjc5YzM3MjVkNzA3MzE2NTc0NTczZjIzZThhMTIifX0='
+Token = '8'
+Login = '*'
+SecretKey = '*'
 
-SQLHostName = '127.0.0.1' # 192.168.1.101
-SQLUserName = 'Ander_kot'
-SQLRassword = 'vfvf2009'
-SQLBaseName = 'myqiwisql'
+SQLHostName = '127.0.0.1' # *
+SQLUserName = '*'
+SQLRassword = '*'
+SQLBaseName = '*'
 
 # Профиль пользователя --
 def get_profile(api_access_token):
