@@ -5,12 +5,14 @@ from telebot import types
 from decimal import Decimal
 
 # Инициализация бота
-Bot = telebot.TeleBot('5293129292:AAFLb6IJl8XThYWUH4DpFrn7bZ4En-Noy_8')
+Bot = telebot.TeleBot('**')
 LoginMode = False
+
+Delete_markup = types.ReplyKeyboardRemove()
+
 Regestration_markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
 Regestration_markup.add(types.KeyboardButton("Вход"))
 
-Delete_markup = types.ReplyKeyboardRemove()
 
 Main_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
 Main_menu_markup.add(types.KeyboardButton("Создать ссылку на пополнение Steam"))
@@ -126,9 +128,11 @@ def main(message):
             Bot.send_message(message.chat.id, 'Ваш текущий ник: '+nick_name,reply_markup= Nick_Name_menu_markup)
             Bot.register_next_step_handler(message,NickNameMenu)
     else:
-        print('У клиента ошибка ! '+str(message.chat.id))
-        Bot.send_message(message.chat.id, 'Ошибка!/nВаш ник не найден/nПовторите попытку или свяжитесь с подержкой!\nhttps://t.me/ander_kot_1')
-        Bot.register_next_step_handler(message,main)
+        print("Запрос регестрации: "+str(message.chat.id))
+        Bot.send_message(message.chat.id, 'Пожалуйста введите свой логин в Steam\nОн расположен в окне Steam во вкладке с верху с права',reply_markup = Delete_markup)
+        login_tip_img = open('Logintip.png','rb')
+        Bot.send_photo(message.chat.id,login_tip_img)
+        Bot.register_next_step_handler(message,registration)
 
 def createpayment(message):
     if("Назад" == message.text):
