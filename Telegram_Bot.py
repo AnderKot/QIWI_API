@@ -206,7 +206,7 @@ while True:
 
     except Exception as e:
         time.sleep(500)
-          # или просто print(e) если у вас логгера нет,
+        print(e)
         # или import traceback; traceback.print_exc() для печати полной инфы
        
 

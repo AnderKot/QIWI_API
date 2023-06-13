@@ -1,11 +1,13 @@
 import requests
-import mysql.connector
+import sqlite3;
 import json
 import datetime
+
 from datetime import timedelta
 from mysql.connector import Error
 from decimal import Decimal
 from requests.structures import CaseInsensitiveDict
+
 
 Token = '8'
 Login = '*'
@@ -84,24 +86,11 @@ def payment_history_last(login, api_access_token, rows_num):
     h = s.get('https://edge.qiwi.com/payment-history/v2/persons/' + login + '/payments', params = parameters)
     return h.json()
 
-# Подключение к серверу SQL --
-def Create_SQL_connection(host_name, user_name, user_password, db_name):
-    connection = None
-    try:
-        connection = mysql.connector.connect(
-            host=host_name,
-            user=user_name,
-            passwd=user_password,
-            database=db_name    
-        )
-    except Error as e:
-        print(f"Ошибка подключения к MySQL '{e}'")
-    return connection
 
 # Отправка запроса SQL
 def execute_query(query, tip='не определено'):
-    connection = Create_SQL_connection(SQLHostName,SQLUserName,SQLRassword,SQLBaseName)
-    cursor = connection.cursor()
+    connection = sqlite3.connect("metanit.db")
+    cursor = con.cursor()
     try:
         cursor.execute(query)
         result = cursor.fetchall()
